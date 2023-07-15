@@ -1,0 +1,12 @@
+[package]
+name = "nexplore"
+version = "0.1.0"
+edition = "2021"
+authors = ["Garry O'Donnell <garry.euan.odonnell@ntlworld.com>"]
+description = "A Terminal User Interface (TUI) for exploring hdf5 & NeXus files"
+license = "MIT OR Apache-2.0"
+keywords = ["hdf5", "nexus", "tui"]
+categories = ["command-line-utilities", "science", "visualization"]
+repository = "https://github.com/garryod/nexplore"
+
+[dependencies]
