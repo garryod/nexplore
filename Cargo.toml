@@ -10,3 +10,6 @@ categories = ["command-line-utilities", "science", "visualization"]
 repository = "https://github.com/garryod/nexplore"
 
 [dependencies]
+anyhow = { version = "1.0.72" }
+crossterm = { version = "0.26.1" }
+ratatui = { version = "0.21.0" }
