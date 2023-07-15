@@ -1,14 +1,28 @@
+mod h5file;
+mod ui;
+
+use crate::ui::render;
+use clap::Parser;
 use crossterm::{
     event::{self, Event, KeyCode},
     execute,
     terminal::{disable_raw_mode, enable_raw_mode, EnterAlternateScreen, LeaveAlternateScreen},
 };
-use ratatui::{backend::CrosstermBackend, widgets::Paragraph, Frame, Terminal};
-use std::{io::Stdout, time::Duration};
+use h5file::FileInfo;
+use ratatui::{backend::CrosstermBackend, Terminal};
+use std::{io::Stdout, path::PathBuf, time::Duration};
+
+#[derive(Debug, Parser)]
+#[clap(author, version, about, long_about = None)]
+struct Cli {
+    path: PathBuf,
+}
 
 fn main() {
+    let args = Cli::parse();
     let mut terminal = setup_terminal().unwrap();
-    run(&mut terminal).unwrap();
+    let file_info = FileInfo::read(args.path).unwrap();
+    run(&mut terminal, file_info).unwrap();
     restore_terminal(&mut terminal).unwrap();
 }
 
@@ -27,9 +41,12 @@ fn restore_terminal(
     Ok(terminal.show_cursor()?)
 }
 
-fn run(terminal: &mut Terminal<CrosstermBackend<Stdout>>) -> Result<(), anyhow::Error> {
+fn run(
+    terminal: &mut Terminal<CrosstermBackend<Stdout>>,
+    file_info: FileInfo,
+) -> Result<(), anyhow::Error> {
     loop {
-        terminal.draw(render)?;
+        terminal.draw(|frame| render(frame, &file_info))?;
         if event::poll(Duration::from_millis(250))? {
             if let Event::Key(key) = event::read()? {
                 if key.code == KeyCode::Char('q') {
@@ -39,8 +56,4 @@ fn run(terminal: &mut Terminal<CrosstermBackend<Stdout>>) -> Result<(), anyhow::
         }
     }
     Ok(())
-}
-
-fn render(frame: &mut Frame<'_, CrosstermBackend<Stdout>>) {
-    frame.render_widget(Paragraph::new("Hello World"), frame.size());
 }
