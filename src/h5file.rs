@@ -13,7 +13,7 @@ pub struct GroupInfo {
 
 impl GroupInfo {
     fn extract(group: Group) -> Result<Self, anyhow::Error> {
-        let name = group.name();
+        let name = group.name().split('/').last().unwrap().to_string();
         let subgroups = group
             .groups()?
             .into_iter()
@@ -53,7 +53,7 @@ pub struct DatasetInfo {
 
 impl DatasetInfo {
     fn extract(dataset: Dataset) -> Self {
-        let name = dataset.name();
+        let name = dataset.name().split('/').last().unwrap().to_string();
         Self { name }
     }
 }
