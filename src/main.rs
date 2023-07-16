@@ -1,5 +1,6 @@
 mod h5file;
 mod ui;
+pub mod widgets;
 
 use crate::ui::render;
 use clap::Parser;

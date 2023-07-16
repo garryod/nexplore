@@ -1,3 +1,7 @@
+use crate::{
+    h5file::FileInfo,
+    widgets::tree::{Tree, TreeItem},
+};
 use humansize::{format_size, BINARY};
 use ratatui::{
     backend::CrosstermBackend,
@@ -6,8 +10,6 @@ use ratatui::{
     Frame,
 };
 use std::io::Stdout;
-
-use crate::h5file::FileInfo;
 
 pub fn render(frame: &mut Frame<'_, CrosstermBackend<Stdout>>, file_info: &FileInfo) {
     let vertical_chunks = Layout::default()
@@ -24,4 +26,18 @@ pub fn render(frame: &mut Frame<'_, CrosstermBackend<Stdout>>, file_info: &FileI
     let file_size = Paragraph::new(format_size(file_info.size, BINARY))
         .block(Block::default().title("Size").borders(Borders::ALL));
     frame.render_widget(file_size, header_chunks[1]);
+    let data_chunks = Layout::default()
+        .direction(Direction::Horizontal)
+        .constraints([Constraint::Ratio(2, 5), Constraint::Ratio(3, 5)])
+        .split(vertical_chunks[1]);
+    let group_tree = Tree::new(
+        file_info
+            .groups
+            .iter()
+            .cloned()
+            .map(TreeItem::from)
+            .collect(),
+    )
+    .block(Block::default().title("Groups").borders(Borders::ALL));
+    frame.render_widget(group_tree, data_chunks[0]);
 }
