@@ -19,6 +19,12 @@ impl<'a> TreeItem<'a> {
 }
 
 #[derive(Debug)]
+struct FlatItem<'a> {
+    index: Vec<usize>,
+    contents: Text<'a>,
+}
+
+#[derive(Debug)]
 pub struct TreeState;
 
 #[derive(Debug)]
@@ -62,26 +68,53 @@ impl<'a> StatefulWidget for Tree<'a> {
         let mut item_bottom = area.top();
         for item in items.into_iter() {
             let item_top = item_bottom;
-            if item_top + item.height() as u16 > area.bottom() {
+            if item_top + item.contents.height() as u16 > area.bottom() {
                 break;
             }
-            let area = Rect::new(area.left(), item_top, area.width, item.height() as u16);
+            let area = Rect::new(
+                area.left() + 2 * (item.index.len() as u16 - 1),
+                item_top,
+                area.width,
+                item.contents.height() as u16,
+            );
             buf.set_style(area, Style::default());
 
-            for (line_idx, line) in item.lines.iter().enumerate() {
+            for (line_idx, line) in item.contents.lines.iter().enumerate() {
                 buf.set_line(area.left(), item_top + line_idx as u16, line, area.width);
             }
-            item_bottom += item.height() as u16;
+            item_bottom += item.contents.height() as u16;
         }
     }
 }
 
-fn flatten(mut items: Vec<TreeItem>) -> Vec<Text> {
-    items.reverse();
+fn flatten(items: Vec<TreeItem>) -> Vec<FlatItem> {
+    let mut to_flatten = items
+        .into_iter()
+        .enumerate()
+        .map(|(index, item)| (vec![index], item))
+        .collect::<Vec<_>>();
     let mut entries = Vec::default();
-    while let Some(item) = items.pop() {
-        entries.push(item.contents);
-        items.extend(item.children.into_iter().rev());
+    while let Some((index, item)) = to_flatten.pop() {
+        entries.push(FlatItem {
+            index: index.clone(),
+            contents: item.contents,
+        });
+        to_flatten.extend(
+            item.children
+                .into_iter()
+                .enumerate()
+                .map(|(child_index, item)| {
+                    (
+                        index
+                            .iter()
+                            .cloned()
+                            .chain(std::iter::once(child_index))
+                            .collect(),
+                        item,
+                    )
+                })
+                .rev(),
+        );
     }
     entries
 }
