@@ -1,6 +1,6 @@
 use crate::{
     h5file::FileInfo,
-    widgets::tree::{Tree, TreeItem},
+    widgets::tree::{Tree, TreeItem, TreeState},
 };
 use humansize::{format_size, BINARY};
 use ratatui::{
@@ -11,7 +11,11 @@ use ratatui::{
 };
 use std::io::Stdout;
 
-pub fn render(frame: &mut Frame<'_, CrosstermBackend<Stdout>>, file_info: &FileInfo) {
+pub fn render(
+    frame: &mut Frame<'_, CrosstermBackend<Stdout>>,
+    tree_state: &mut TreeState,
+    file_info: &FileInfo,
+) {
     let vertical_chunks = Layout::default()
         .direction(Direction::Vertical)
         .constraints([Constraint::Length(3), Constraint::Ratio(1, 1)])
@@ -39,5 +43,5 @@ pub fn render(frame: &mut Frame<'_, CrosstermBackend<Stdout>>, file_info: &FileI
             .collect(),
     )
     .block(Block::default().title("Groups").borders(Borders::ALL));
-    frame.render_widget(group_tree, data_chunks[0]);
+    frame.render_stateful_widget(group_tree, data_chunks[0], tree_state);
 }

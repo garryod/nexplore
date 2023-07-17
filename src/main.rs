@@ -12,6 +12,7 @@ use crossterm::{
 use h5file::FileInfo;
 use ratatui::{backend::CrosstermBackend, Terminal};
 use std::{io::Stdout, path::PathBuf, time::Duration};
+use widgets::tree::TreeState;
 
 #[derive(Debug, Parser)]
 #[clap(author, version, about, long_about = None)]
@@ -46,12 +47,16 @@ fn run(
     terminal: &mut Terminal<CrosstermBackend<Stdout>>,
     file_info: FileInfo,
 ) -> Result<(), anyhow::Error> {
+    let mut tree_state = TreeState::default();
     loop {
-        terminal.draw(|frame| render(frame, &file_info))?;
+        terminal.draw(|frame| render(frame, &mut tree_state, &file_info))?;
         if event::poll(Duration::from_millis(250))? {
             if let Event::Key(key) = event::read()? {
-                if key.code == KeyCode::Char('q') {
-                    break;
+                match key.code {
+                    KeyCode::Char('q') => break,
+                    KeyCode::Up | KeyCode::Char('k') => tree_state.move_up(),
+                    KeyCode::Down | KeyCode::Char('j') => tree_state.move_down(),
+                    _ => {}
                 }
             }
         }

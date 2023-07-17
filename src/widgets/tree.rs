@@ -1,7 +1,7 @@
 use ratatui::{
     buffer::Buffer,
     layout::Rect,
-    style::Style,
+    style::{Color, Style},
     text::Text,
     widgets::{Block, StatefulWidget, Widget},
 };
@@ -24,8 +24,20 @@ struct FlatItem<'a> {
     contents: Text<'a>,
 }
 
-#[derive(Debug)]
-pub struct TreeState;
+#[derive(Debug, Default)]
+pub struct TreeState {
+    position: usize,
+}
+
+impl TreeState {
+    pub fn move_down(&mut self) {
+        self.position = self.position.saturating_add(1);
+    }
+
+    pub fn move_up(&mut self) {
+        self.position = self.position.saturating_sub(1);
+    }
+}
 
 #[derive(Debug)]
 pub struct Tree<'a> {
@@ -54,7 +66,7 @@ impl<'a> Tree<'a> {
 impl<'a> StatefulWidget for Tree<'a> {
     type State = TreeState;
 
-    fn render(self, area: Rect, buf: &mut Buffer, _state: &mut Self::State) {
+    fn render(self, area: Rect, buf: &mut Buffer, state: &mut Self::State) {
         buf.set_style(area, self.style);
 
         let area = self.block.map_or(area, |block| {
@@ -66,18 +78,24 @@ impl<'a> StatefulWidget for Tree<'a> {
         let items = flatten(self.items);
 
         let mut item_bottom = area.top();
-        for item in items.into_iter() {
+        for (item_idx, item) in items.into_iter().enumerate() {
             let item_top = item_bottom;
             if item_top + item.contents.height() as u16 > area.bottom() {
                 break;
             }
+            let indent = 2 * (item.index.len() as u16 - 1);
             let area = Rect::new(
-                area.left() + 2 * (item.index.len() as u16 - 1),
+                area.left() + indent,
                 item_top,
-                area.width,
+                area.width - indent,
                 item.contents.height() as u16,
             );
-            buf.set_style(area, Style::default());
+            let style = if item_idx == state.position {
+                Style::new().bg(Color::White)
+            } else {
+                Style::default()
+            };
+            buf.set_style(area, style);
 
             for (line_idx, line) in item.contents.lines.iter().enumerate() {
                 buf.set_line(area.left(), item_top + line_idx as u16, line, area.width);
@@ -117,11 +135,4 @@ fn flatten(items: Vec<TreeItem>) -> Vec<FlatItem> {
         );
     }
     entries
-}
-
-impl<'a> Widget for Tree<'a> {
-    fn render(self, area: Rect, buf: &mut Buffer) {
-        let mut state = TreeState;
-        StatefulWidget::render(self, area, buf, &mut state);
-    }
 }
