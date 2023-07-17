@@ -47,7 +47,7 @@ impl TreeState {
 
 #[derive(Debug)]
 pub struct Tree<'a> {
-    items: Vec<TreeItem<'a>>,
+    items: Vec<FlatItem<'a>>,
     style: Style,
     block: Option<Block<'a>>,
 }
@@ -56,7 +56,7 @@ impl<'a> Tree<'a> {
     #[must_use]
     pub fn new(items: Vec<TreeItem<'a>>) -> Self {
         Self {
-            items,
+            items: flatten(items),
             style: Style::default(),
             block: None,
         }
@@ -81,10 +81,8 @@ impl<'a> StatefulWidget for Tree<'a> {
             inner_area
         });
 
-        let items = flatten(self.items);
-
         let mut item_bottom = area.top();
-        for (item_idx, item) in items.into_iter().enumerate() {
+        for (item_idx, item) in self.items.into_iter().enumerate() {
             let item_top = item_bottom;
             if item_top + item.contents.height() as u16 > area.bottom() {
                 break;
