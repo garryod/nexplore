@@ -1,7 +1,7 @@
 use ratatui::{
     buffer::Buffer,
     layout::Rect,
-    style::{Color, Style},
+    style::{Color, Modifier, Style},
     text::Text,
     widgets::{Block, StatefulWidget, Widget},
 };
@@ -9,12 +9,17 @@ use ratatui::{
 #[derive(Debug)]
 pub struct TreeItem<'a> {
     contents: Text<'a>,
+    color: Color,
     children: Vec<TreeItem<'a>>,
 }
 
 impl<'a> TreeItem<'a> {
-    pub fn new(contents: Text<'a>, children: Vec<TreeItem<'a>>) -> Self {
-        Self { children, contents }
+    pub fn new(contents: Text<'a>, color: Color, children: Vec<TreeItem<'a>>) -> Self {
+        Self {
+            contents,
+            color,
+            children,
+        }
     }
 }
 
@@ -22,6 +27,7 @@ impl<'a> TreeItem<'a> {
 struct FlatItem<'a> {
     index: Vec<usize>,
     contents: Text<'a>,
+    color: Color,
 }
 
 #[derive(Debug, Default)]
@@ -91,9 +97,9 @@ impl<'a> StatefulWidget for Tree<'a> {
                 item.contents.height() as u16,
             );
             let style = if item_idx == state.position {
-                Style::new().bg(Color::White)
+                Style::new().bg(Color::White).add_modifier(Modifier::BOLD)
             } else {
-                Style::default()
+                Style::new().fg(item.color)
             };
             buf.set_style(area, style);
 
@@ -116,6 +122,7 @@ fn flatten(items: Vec<TreeItem>) -> Vec<FlatItem> {
         entries.push(FlatItem {
             index: index.clone(),
             contents: item.contents,
+            color: item.color,
         });
         to_flatten.extend(
             item.children

@@ -1,7 +1,7 @@
 use crate::widgets::tree::TreeItem;
 use anyhow::Context;
 use hdf5::{Dataset, File, Group};
-use ratatui::text::Text;
+use ratatui::{style::Color, text::Text};
 use std::path::Path;
 
 #[derive(Debug, Clone)]
@@ -36,6 +36,7 @@ impl From<GroupInfo> for TreeItem<'_> {
     fn from(group: GroupInfo) -> Self {
         Self::new(
             Text::raw(group.name),
+            Color::Green,
             group
                 .subgroups
                 .into_iter()
@@ -60,7 +61,7 @@ impl DatasetInfo {
 
 impl From<DatasetInfo> for TreeItem<'_> {
     fn from(dataset: DatasetInfo) -> Self {
-        Self::new(Text::raw(dataset.name), vec![])
+        Self::new(Text::raw(dataset.name), Color::Blue, vec![])
     }
 }
 
