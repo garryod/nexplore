@@ -13,7 +13,7 @@ use std::io::Stdout;
 
 pub fn render(
     frame: &mut Frame<'_, CrosstermBackend<Stdout>>,
-    tree_state: &mut TreeState,
+    contents_tree_state: &mut TreeState,
     file_info: &FileInfo,
 ) {
     let vertical_chunks = Layout::default()
@@ -34,7 +34,7 @@ pub fn render(
         .direction(Direction::Horizontal)
         .constraints([Constraint::Ratio(2, 5), Constraint::Ratio(3, 5)])
         .split(vertical_chunks[1]);
-    let group_tree = Tree::new(
+    let contents_tree = Tree::new(
         file_info
             .groups
             .iter()
@@ -42,6 +42,6 @@ pub fn render(
             .map(TreeItem::from)
             .collect(),
     )
-    .block(Block::default().title("Groups").borders(Borders::ALL));
-    frame.render_stateful_widget(group_tree, data_chunks[0], tree_state);
+    .block(Block::default().title("Contents").borders(Borders::ALL));
+    frame.render_stateful_widget(contents_tree, data_chunks[0], contents_tree_state);
 }
