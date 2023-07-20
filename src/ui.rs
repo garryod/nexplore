@@ -1,6 +1,6 @@
 use crate::{
     h5file::FileInfo,
-    widgets::tree::{Tree, TreeItem, TreeState},
+    widgets::tree::{Tree, TreeState},
 };
 use humansize::{format_size, BINARY};
 use ratatui::{
@@ -34,14 +34,7 @@ pub fn render(
         .direction(Direction::Horizontal)
         .constraints([Constraint::Ratio(2, 5), Constraint::Ratio(3, 5)])
         .split(vertical_chunks[1]);
-    let contents_tree = Tree::new(
-        file_info
-            .groups
-            .iter()
-            .cloned()
-            .map(TreeItem::from)
-            .collect(),
-    )
-    .block(Block::default().title("Contents").borders(Borders::ALL));
+    let contents_tree = Tree::new(file_info.to_tree_items())
+        .block(Block::default().title("Contents").borders(Borders::ALL));
     frame.render_stateful_widget(contents_tree, data_chunks[0], contents_tree_state);
 }

@@ -70,6 +70,7 @@ pub struct FileInfo {
     pub name: String,
     pub size: u64,
     pub groups: Vec<GroupInfo>,
+    pub datasets: Vec<DatasetInfo>,
 }
 
 impl FileInfo {
@@ -87,7 +88,26 @@ impl FileInfo {
             .into_iter()
             .map(GroupInfo::extract)
             .collect::<Result<Vec<_>, anyhow::Error>>()?;
+        let datasets = file
+            .datasets()?
+            .into_iter()
+            .map(DatasetInfo::extract)
+            .collect();
 
-        Ok(Self { name, size, groups })
+        Ok(Self {
+            name,
+            size,
+            groups,
+            datasets,
+        })
+    }
+
+    pub fn to_tree_items(&self) -> Vec<TreeItem> {
+        self.datasets
+            .iter()
+            .cloned()
+            .map(TreeItem::from)
+            .chain(self.groups.iter().cloned().map(TreeItem::from))
+            .collect()
     }
 }
