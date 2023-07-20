@@ -5,30 +5,43 @@ use ratatui::{style::Color, text::Text};
 use std::path::Path;
 
 #[derive(Debug, Clone)]
+pub enum EntityInfo {
+    Group(GroupInfo),
+    Dataset(DatasetInfo),
+}
+
+impl From<EntityInfo> for TreeItem<'_> {
+    fn from(value: EntityInfo) -> Self {
+        match value {
+            EntityInfo::Group(info) => TreeItem::from(info),
+            EntityInfo::Dataset(info) => TreeItem::from(info),
+        }
+    }
+}
+
+#[derive(Debug, Clone)]
 pub struct GroupInfo {
     name: String,
-    subgroups: Vec<GroupInfo>,
-    datasets: Vec<DatasetInfo>,
+    entities: Vec<EntityInfo>,
 }
 
 impl GroupInfo {
     fn extract(group: Group) -> Result<Self, anyhow::Error> {
         let name = group.name().split('/').last().unwrap().to_string();
-        let subgroups = group
+        let mut entities = group
             .groups()?
             .into_iter()
             .map(GroupInfo::extract)
-            .collect::<Result<Vec<_>, anyhow::Error>>()?;
-        let datasets = group
-            .datasets()?
-            .into_iter()
-            .map(DatasetInfo::extract)
-            .collect();
-        Ok(Self {
-            name,
-            subgroups,
-            datasets,
-        })
+            .map(|group| group.map(EntityInfo::Group))
+            .collect::<Result<Vec<_>, _>>()?;
+        entities.extend(
+            group
+                .datasets()?
+                .into_iter()
+                .map(DatasetInfo::extract)
+                .map(EntityInfo::Dataset),
+        );
+        Ok(Self { name, entities })
     }
 }
 
@@ -37,12 +50,7 @@ impl From<GroupInfo> for TreeItem<'_> {
         Self::new(
             Text::raw(group.name),
             Color::Green,
-            group
-                .subgroups
-                .into_iter()
-                .map(TreeItem::from)
-                .chain(group.datasets.into_iter().map(TreeItem::from))
-                .collect(),
+            group.entities.into_iter().map(TreeItem::from).collect(),
         )
     }
 }
@@ -69,8 +77,7 @@ impl From<DatasetInfo> for TreeItem<'_> {
 pub struct FileInfo {
     pub name: String,
     pub size: u64,
-    pub groups: Vec<GroupInfo>,
-    pub datasets: Vec<DatasetInfo>,
+    pub entities: Vec<EntityInfo>,
 }
 
 impl FileInfo {
@@ -83,31 +90,16 @@ impl FileInfo {
             .into_owned();
         let file = File::open(path)?;
         let size = file.size();
-        let groups = file
-            .groups()?
-            .into_iter()
-            .map(GroupInfo::extract)
-            .collect::<Result<Vec<_>, anyhow::Error>>()?;
-        let datasets = file
-            .datasets()?
-            .into_iter()
-            .map(DatasetInfo::extract)
-            .collect();
+        let entities = GroupInfo::extract(file.as_group()?)?.entities;
 
         Ok(Self {
             name,
             size,
-            groups,
-            datasets,
+            entities,
         })
     }
 
     pub fn to_tree_items(&self) -> Vec<TreeItem> {
-        self.datasets
-            .iter()
-            .cloned()
-            .map(TreeItem::from)
-            .chain(self.groups.iter().cloned().map(TreeItem::from))
-            .collect()
+        self.entities.iter().cloned().map(TreeItem::from).collect()
     }
 }
