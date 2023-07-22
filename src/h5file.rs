@@ -1,5 +1,5 @@
 use crate::widgets::tree::{TreeItem, TreeItems};
-use anyhow::Context;
+use anyhow::{anyhow, Context};
 use hdf5::{Dataset, File, Group};
 use ratatui::{style::Color, text::Text};
 use std::path::Path;
@@ -97,6 +97,23 @@ impl FileInfo {
             size,
             entities,
         })
+    }
+
+    pub fn entity(&self, index: Vec<usize>) -> Result<EntityInfo, anyhow::Error> {
+        let mut indices = index.into_iter();
+        let mut entity = self
+            .entities
+            .get(indices.next().context("Index was empty")?)
+            .context("No entity at index")?;
+        for idx in indices {
+            match entity {
+                EntityInfo::Group(group) => {
+                    entity = group.entities.get(idx).context("Index was empty")?
+                }
+                EntityInfo::Dataset(_) => Err(anyhow!("Cannot index into a dataset"))?,
+            }
+        }
+        Ok(entity.clone())
     }
 
     pub fn to_tree_items(&self) -> TreeItems {
