@@ -25,20 +25,22 @@ pub struct GroupInfo {
     entities: Vec<EntityInfo>,
 }
 
-impl GroupInfo {
-    fn extract(group: Group) -> Result<Self, anyhow::Error> {
+impl TryFrom<Group> for GroupInfo {
+    type Error = anyhow::Error;
+
+    fn try_from(group: Group) -> Result<Self, Self::Error> {
         let name = group.name().split('/').last().unwrap().to_string();
         let mut entities = group
             .groups()?
             .into_iter()
-            .map(GroupInfo::extract)
+            .map(GroupInfo::try_from)
             .map(|group| group.map(EntityInfo::Group))
             .collect::<Result<Vec<_>, _>>()?;
         entities.extend(
             group
                 .datasets()?
                 .into_iter()
-                .map(DatasetInfo::extract)
+                .map(DatasetInfo::from)
                 .map(EntityInfo::Dataset),
         );
         Ok(Self { name, entities })
@@ -60,8 +62,8 @@ pub struct DatasetInfo {
     name: String,
 }
 
-impl DatasetInfo {
-    fn extract(dataset: Dataset) -> Self {
+impl From<Dataset> for DatasetInfo {
+    fn from(dataset: Dataset) -> Self {
         let name = dataset.name().split('/').last().unwrap().to_string();
         Self { name }
     }
@@ -90,7 +92,7 @@ impl FileInfo {
             .into_owned();
         let file = File::open(path)?;
         let size = file.size();
-        let entities = GroupInfo::extract(file.as_group()?)?.entities;
+        let entities = GroupInfo::try_from(file.as_group()?)?.entities;
 
         Ok(Self {
             name,
