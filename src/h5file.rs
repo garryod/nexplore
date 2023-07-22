@@ -1,4 +1,4 @@
-use crate::widgets::tree::TreeItem;
+use crate::widgets::tree::{TreeItem, TreeItems};
 use anyhow::Context;
 use hdf5::{Dataset, File, Group};
 use ratatui::{style::Color, text::Text};
@@ -99,7 +99,13 @@ impl FileInfo {
         })
     }
 
-    pub fn to_tree_items(&self) -> Vec<TreeItem> {
-        self.entities.iter().cloned().map(TreeItem::from).collect()
+    pub fn to_tree_items(&self) -> TreeItems {
+        TreeItems::from(
+            self.entities
+                .iter()
+                .cloned()
+                .map(TreeItem::from)
+                .collect::<Vec<_>>(),
+        )
     }
 }

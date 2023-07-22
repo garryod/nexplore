@@ -55,7 +55,9 @@ fn run(
                 match key.code {
                     KeyCode::Char('q') => break,
                     KeyCode::Up | KeyCode::Char('k') => tree_state.move_up(),
-                    KeyCode::Down | KeyCode::Char('j') => tree_state.move_down(),
+                    KeyCode::Down | KeyCode::Char('j') => {
+                        tree_state.move_down(&file_info.to_tree_items())
+                    }
                     _ => {}
                 }
             }

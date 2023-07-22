@@ -1,3 +1,4 @@
+use derive_more::Deref;
 use ratatui::{
     buffer::Buffer,
     layout::Rect,
@@ -24,10 +25,19 @@ impl<'a> TreeItem<'a> {
 }
 
 #[derive(Debug)]
-struct FlatItem<'a> {
+pub struct FlatItem<'a> {
     index: Vec<usize>,
     contents: Text<'a>,
     color: Color,
+}
+
+#[derive(Debug, Deref)]
+pub struct TreeItems<'i>(pub Vec<FlatItem<'i>>);
+
+impl<'i> From<Vec<TreeItem<'i>>> for TreeItems<'i> {
+    fn from(items: Vec<TreeItem<'i>>) -> Self {
+        Self(flatten(items))
+    }
 }
 
 #[derive(Debug, Default)]
@@ -36,8 +46,8 @@ pub struct TreeState {
 }
 
 impl TreeState {
-    pub fn move_down(&mut self) {
-        self.position = self.position.saturating_add(1);
+    pub fn move_down(&mut self, items: &TreeItems) {
+        self.position = self.position.saturating_add(1).min(items.len() - 1);
     }
 
     pub fn move_up(&mut self) {
@@ -46,24 +56,24 @@ impl TreeState {
 }
 
 #[derive(Debug)]
-pub struct Tree<'a> {
-    items: Vec<FlatItem<'a>>,
+pub struct Tree<'i> {
+    items: TreeItems<'i>,
     style: Style,
-    block: Option<Block<'a>>,
+    block: Option<Block<'i>>,
 }
 
-impl<'a> Tree<'a> {
+impl<'i> Tree<'i> {
     #[must_use]
-    pub fn new(items: Vec<TreeItem<'a>>) -> Self {
+    pub fn new(items: TreeItems<'i>) -> Self {
         Self {
-            items: flatten(items),
+            items,
             style: Style::default(),
             block: None,
         }
     }
 
     #[must_use]
-    pub fn block(mut self, block: Block<'a>) -> Self {
+    pub fn block(mut self, block: Block<'i>) -> Self {
         self.block = Some(block);
         self
     }
@@ -82,7 +92,7 @@ impl<'a> StatefulWidget for Tree<'a> {
         });
 
         let mut item_bottom = area.top();
-        for (item_idx, item) in self.items.into_iter().enumerate() {
+        for (item_idx, item) in self.items.iter().enumerate() {
             let item_top = item_bottom;
             if item_top + item.contents.height() as u16 > area.bottom() {
                 break;
