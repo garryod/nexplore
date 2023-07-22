@@ -46,6 +46,10 @@ pub struct TreeState {
 }
 
 impl TreeState {
+    pub fn position(&self, items: &TreeItems) -> Option<Vec<usize>> {
+        items.get(self.position).map(|item| item.index.clone())
+    }
+
     pub fn move_down(&mut self, items: &TreeItems) {
         self.position = self.position.saturating_add(1).min(items.len() - 1);
     }
