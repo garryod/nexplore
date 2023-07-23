@@ -109,10 +109,7 @@ impl<'a> StatefulWidget for Tree<'a> {
                 item.contents.height() as u16,
             );
             let style = if item_idx == state.position {
-                Style::new()
-                    .fg(Color::Black)
-                    .bg(item.color)
-                    .add_modifier(Modifier::BOLD)
+                Style::new().bg(item.color).add_modifier(Modifier::BOLD)
             } else {
                 Style::new().fg(item.color)
             };
