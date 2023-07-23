@@ -1,6 +1,6 @@
 use crate::widgets::tree::{TreeItem, TreeItems};
 use anyhow::{anyhow, Context};
-use hdf5::{Dataset, File, Group};
+use hdf5::{dataset::Layout, filters::Filter, Dataset, File, Group};
 use std::path::Path;
 
 #[derive(Debug, Clone)]
@@ -51,12 +51,42 @@ impl TryFrom<Group> for GroupInfo {
 #[derive(Debug, Clone)]
 pub struct DatasetInfo {
     pub name: String,
+    pub id: i64,
+    pub shape: Vec<usize>,
+    pub layout_info: DatasetLayoutInfo,
+}
+
+#[derive(Debug, Clone)]
+pub enum DatasetLayoutInfo {
+    Compact {},
+    Contiguous {},
+    Chunked {
+        chunk_shape: Vec<usize>,
+        filters: Vec<Filter>,
+    },
+    Virtial {},
 }
 
 impl From<Dataset> for DatasetInfo {
     fn from(dataset: Dataset) -> Self {
         let name = dataset.name().split('/').last().unwrap().to_string();
-        Self { name }
+        let id = dataset.id();
+        let shape = dataset.shape();
+        let layout_info = match dataset.layout() {
+            Layout::Compact => DatasetLayoutInfo::Compact {},
+            Layout::Contiguous => DatasetLayoutInfo::Contiguous {},
+            Layout::Chunked => DatasetLayoutInfo::Chunked {
+                chunk_shape: dataset.chunk().unwrap(),
+                filters: dataset.filters(),
+            },
+            Layout::Virtual => DatasetLayoutInfo::Virtial {},
+        };
+        Self {
+            name,
+            id,
+            shape,
+            layout_info,
+        }
     }
 }
 

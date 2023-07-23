@@ -1,5 +1,5 @@
 use crate::{
-    h5file::{DatasetInfo, EntityInfo, GroupInfo},
+    h5file::{DatasetInfo, DatasetLayoutInfo, EntityInfo, GroupInfo},
     widgets::tree::{Tree, TreeItem, TreeItems, TreeState},
 };
 use humansize::{format_size, BINARY};
@@ -91,12 +91,55 @@ const DATASET_COLOR: Color = Color::Green;
 
 impl<'f, B: Backend> Render<'f, B> for DatasetInfo {
     fn render(&self, frame: &mut Frame<'f, B>, area: Rect) {
-        let widget = Paragraph::new("").block(
-            Block::default()
-                .title(self.name.clone())
-                .border_style(Style::new().fg(DATASET_COLOR))
-                .borders(Borders::ALL),
-        );
+        let mut rows = vec![
+            Row::new(vec![Cell::from("ID"), Cell::from(self.id.to_string())]),
+            Row::new(vec![
+                Cell::from("Shape"),
+                Cell::from(format!("{:?}", self.shape)),
+            ]),
+            Row::new(vec![
+                Cell::from("Layout"),
+                Cell::from(match self.layout_info {
+                    DatasetLayoutInfo::Compact {} => "Compact",
+                    DatasetLayoutInfo::Contiguous {} => "Contiguous",
+                    DatasetLayoutInfo::Chunked {
+                        chunk_shape: _,
+                        filters: _,
+                    } => "Chunked",
+                    DatasetLayoutInfo::Virtial {} => "Virtual",
+                }),
+            ]),
+        ];
+
+        match self.layout_info.clone() {
+            DatasetLayoutInfo::Compact {} => {}
+            DatasetLayoutInfo::Contiguous {} => {}
+            DatasetLayoutInfo::Chunked {
+                chunk_shape,
+                filters,
+            } => {
+                rows.append(&mut vec![
+                    Row::new(vec![
+                        Cell::from("Chunk Shape"),
+                        Cell::from(format!("{chunk_shape:?}")),
+                    ]),
+                    Row::new(vec![
+                        Cell::from("Filters"),
+                        Cell::from(format!("{filters:?}")),
+                    ]),
+                ]);
+            }
+            DatasetLayoutInfo::Virtial {} => {}
+        }
+
+        let widget = Table::new(rows)
+            .widths(&[Constraint::Ratio(1, 2), Constraint::Ratio(1, 2)])
+            .block(
+                Block::default()
+                    .title(self.name.clone())
+                    .border_style(Style::new().fg(DATASET_COLOR))
+                    .borders(Borders::ALL),
+            );
         frame.render_widget(widget, area);
     }
 }
