@@ -1,11 +1,13 @@
 use crate::{
-    h5file::{EntityInfo, Render},
-    widgets::tree::{Tree, TreeItems, TreeState},
+    h5file::{DatasetInfo, EntityInfo, GroupInfo},
+    widgets::tree::{Tree, TreeItem, TreeItems, TreeState},
 };
 use humansize::{format_size, BINARY};
 use ratatui::{
-    backend::CrosstermBackend,
-    layout::{Constraint, Direction, Layout},
+    backend::{Backend, CrosstermBackend},
+    layout::{Constraint, Direction, Layout, Rect},
+    style::{Color, Style},
+    text::Text,
     widgets::{Block, Borders, Paragraph},
     Frame,
 };
@@ -41,4 +43,61 @@ pub fn render(
         Tree::new(tree_items).block(Block::default().title("Contents").borders(Borders::ALL));
     frame.render_stateful_widget(contents_tree, data_chunks[0], tree_state);
     selected_entity.render(frame, data_chunks[1]);
+}
+
+pub trait Render<'f, B: Backend> {
+    fn render(&self, frame: &mut Frame<'f, B>, area: Rect);
+}
+
+impl<'f, B: Backend> Render<'f, B> for EntityInfo {
+    fn render(&self, frame: &mut Frame<'f, B>, area: Rect) {
+        match self {
+            EntityInfo::Group(group) => group.render(frame, area),
+            EntityInfo::Dataset(dataset) => dataset.render(frame, area),
+        }
+    }
+}
+
+const GROUP_COLOR: Color = Color::Blue;
+
+impl<'f, B: Backend> Render<'f, B> for GroupInfo {
+    fn render(&self, frame: &mut Frame<'f, B>, area: Rect) {
+        let widget = Paragraph::new("").block(
+            Block::default()
+                .title(self.name.clone())
+                .border_style(Style::new().fg(GROUP_COLOR))
+                .borders(Borders::ALL),
+        );
+        frame.render_widget(widget, area);
+    }
+}
+
+impl From<GroupInfo> for TreeItem<'_> {
+    fn from(group: GroupInfo) -> Self {
+        Self::new(
+            Text::raw(group.name),
+            GROUP_COLOR,
+            group.entities.into_iter().map(TreeItem::from).collect(),
+        )
+    }
+}
+
+const DATASET_COLOR: Color = Color::Green;
+
+impl<'f, B: Backend> Render<'f, B> for DatasetInfo {
+    fn render(&self, frame: &mut Frame<'f, B>, area: Rect) {
+        let widget = Paragraph::new("").block(
+            Block::default()
+                .title(self.name.clone())
+                .border_style(Style::new().fg(DATASET_COLOR))
+                .borders(Borders::ALL),
+        );
+        frame.render_widget(widget, area);
+    }
+}
+
+impl From<DatasetInfo> for TreeItem<'_> {
+    fn from(dataset: DatasetInfo) -> Self {
+        Self::new(Text::raw(dataset.name), DATASET_COLOR, vec![])
+    }
 }

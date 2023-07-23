@@ -1,33 +1,12 @@
 use crate::widgets::tree::{TreeItem, TreeItems};
 use anyhow::{anyhow, Context};
 use hdf5::{Dataset, File, Group};
-use ratatui::{
-    backend::Backend,
-    layout::Rect,
-    style::{Color, Style},
-    text::Text,
-    widgets::{Block, Borders, Paragraph},
-    Frame,
-};
 use std::path::Path;
-
-pub trait Render<'f, B: Backend> {
-    fn render(&self, frame: &mut Frame<'f, B>, area: Rect);
-}
 
 #[derive(Debug, Clone)]
 pub enum EntityInfo {
     Group(GroupInfo),
     Dataset(DatasetInfo),
-}
-
-impl<'f, B: Backend> Render<'f, B> for EntityInfo {
-    fn render(&self, frame: &mut Frame<'f, B>, area: Rect) {
-        match self {
-            EntityInfo::Group(group) => group.render(frame, area),
-            EntityInfo::Dataset(dataset) => dataset.render(frame, area),
-        }
-    }
 }
 
 impl From<EntityInfo> for TreeItem<'_> {
@@ -39,24 +18,10 @@ impl From<EntityInfo> for TreeItem<'_> {
     }
 }
 
-const GROUP_COLOR: Color = Color::Green;
-
 #[derive(Debug, Clone)]
 pub struct GroupInfo {
-    name: String,
-    entities: Vec<EntityInfo>,
-}
-
-impl<'f, B: Backend> Render<'f, B> for GroupInfo {
-    fn render(&self, frame: &mut Frame<'f, B>, area: Rect) {
-        let widget = Paragraph::new("").block(
-            Block::default()
-                .title(self.name.clone())
-                .border_style(Style::new().fg(GROUP_COLOR))
-                .borders(Borders::ALL),
-        );
-        frame.render_widget(widget, area);
-    }
+    pub name: String,
+    pub entities: Vec<EntityInfo>,
 }
 
 impl TryFrom<Group> for GroupInfo {
@@ -81,45 +46,15 @@ impl TryFrom<Group> for GroupInfo {
     }
 }
 
-impl From<GroupInfo> for TreeItem<'_> {
-    fn from(group: GroupInfo) -> Self {
-        Self::new(
-            Text::raw(group.name),
-            GROUP_COLOR,
-            group.entities.into_iter().map(TreeItem::from).collect(),
-        )
-    }
-}
-
 #[derive(Debug, Clone)]
 pub struct DatasetInfo {
-    name: String,
-}
-
-const DATASET_COLOR: Color = Color::Blue;
-
-impl<'f, B: Backend> Render<'f, B> for DatasetInfo {
-    fn render(&self, frame: &mut Frame<'f, B>, area: Rect) {
-        let widget = Paragraph::new("").block(
-            Block::default()
-                .title(self.name.clone())
-                .border_style(Style::new().fg(DATASET_COLOR))
-                .borders(Borders::ALL),
-        );
-        frame.render_widget(widget, area);
-    }
+    pub name: String,
 }
 
 impl From<Dataset> for DatasetInfo {
     fn from(dataset: Dataset) -> Self {
         let name = dataset.name().split('/').last().unwrap().to_string();
         Self { name }
-    }
-}
-
-impl From<DatasetInfo> for TreeItem<'_> {
-    fn from(dataset: DatasetInfo) -> Self {
-        Self::new(Text::raw(dataset.name), DATASET_COLOR, vec![])
     }
 }
 
