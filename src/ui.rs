@@ -1,7 +1,8 @@
 use crate::{
-    h5file::FileInfo,
+    h5file::{FileInfo, Render},
     widgets::tree::{Tree, TreeState},
 };
+use anyhow::Context;
 use humansize::{format_size, BINARY};
 use ratatui::{
     backend::CrosstermBackend,
@@ -37,4 +38,13 @@ pub fn render(
     let contents_tree = Tree::new(file_info.to_tree_items())
         .block(Block::default().title("Contents").borders(Borders::ALL));
     frame.render_stateful_widget(contents_tree, data_chunks[0], contents_tree_state);
+    file_info
+        .entity(
+            contents_tree_state
+                .position(&file_info.to_tree_items())
+                .unwrap(),
+        )
+        .context("Could not find selected entity")
+        .unwrap()
+        .render(frame, data_chunks[1]);
 }
