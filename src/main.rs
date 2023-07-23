@@ -3,6 +3,7 @@ mod ui;
 pub mod widgets;
 
 use crate::ui::render;
+use anyhow::Context;
 use clap::Parser;
 use crossterm::{
     event::{self, Event, KeyCode},
@@ -49,7 +50,19 @@ fn run(
 ) -> Result<(), anyhow::Error> {
     let mut tree_state = TreeState::default();
     loop {
-        terminal.draw(|frame| render(frame, &mut tree_state, &file_info))?;
+        let selected_entity = file_info
+            .entity(tree_state.position(&file_info.to_tree_items()).unwrap())
+            .context("Could not find selected entity")?;
+        terminal.draw(|frame| {
+            render(
+                frame,
+                &mut tree_state,
+                file_info.to_tree_items(),
+                file_info.name.clone(),
+                file_info.size,
+                selected_entity,
+            )
+        })?;
         if event::poll(Duration::from_millis(250))? {
             if let Event::Key(key) = event::read()? {
                 match key.code {
