@@ -8,7 +8,7 @@ use ratatui::{
     layout::{Constraint, Direction, Layout, Rect},
     style::{Color, Style},
     text::Text,
-    widgets::{Block, Borders, Paragraph},
+    widgets::{Block, Borders, Cell, Paragraph, Row, Table},
     Frame,
 };
 use std::io::Stdout;
@@ -62,7 +62,12 @@ const GROUP_COLOR: Color = Color::Blue;
 
 impl<'f, B: Backend> Render<'f, B> for GroupInfo {
     fn render(&self, frame: &mut Frame<'f, B>, area: Rect) {
-        let widget = Paragraph::new("").block(
+        let widget = Table::new(vec![Row::new(vec![
+            Cell::from("ID"),
+            Cell::from(self.id.to_string()),
+        ])])
+        .widths(&[Constraint::Ratio(1, 2), Constraint::Ratio(1, 2)])
+        .block(
             Block::default()
                 .title(self.name.clone())
                 .border_style(Style::new().fg(GROUP_COLOR))

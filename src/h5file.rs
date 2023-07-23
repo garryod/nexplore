@@ -21,6 +21,7 @@ impl From<EntityInfo> for TreeItem<'_> {
 #[derive(Debug, Clone)]
 pub struct GroupInfo {
     pub name: String,
+    pub id: i64,
     pub entities: Vec<EntityInfo>,
 }
 
@@ -29,6 +30,7 @@ impl TryFrom<Group> for GroupInfo {
 
     fn try_from(group: Group) -> Result<Self, Self::Error> {
         let name = group.name().split('/').last().unwrap().to_string();
+        let id = group.id();
         let mut entities = group
             .groups()?
             .into_iter()
@@ -42,7 +44,7 @@ impl TryFrom<Group> for GroupInfo {
                 .map(DatasetInfo::from)
                 .map(EntityInfo::Dataset),
         );
-        Ok(Self { name, entities })
+        Ok(Self { name, id, entities })
     }
 }
 
