@@ -43,6 +43,7 @@ impl<'i> From<Vec<TreeItem<'i>>> for TreeItems<'i> {
 #[derive(Debug, Default)]
 pub struct TreeState {
     position: usize,
+    offset: usize,
 }
 
 impl TreeState {
@@ -83,24 +84,66 @@ impl<'i> Tree<'i> {
     }
 }
 
+impl<'i> Tree<'i> {
+    fn bounds(&self, position: usize, prior_offset: usize, max_height: usize) -> (usize, usize) {
+        let heights = self
+            .items
+            .iter()
+            .scan(0, |acc, item| {
+                *acc += item.contents.height();
+                Some(*acc)
+            })
+            .collect::<Vec<_>>();
+
+        if position < prior_offset {
+            let start = position;
+            let end = heights
+                .iter()
+                .enumerate()
+                .find_map(|(idx, &height)| (heights[start] + max_height <= height).then_some(idx))
+                .unwrap_or(self.items.len());
+            (start, end)
+        } else if heights[prior_offset] + max_height <= heights[position] {
+            let end = position + 1;
+            let start = heights
+                .iter()
+                .enumerate()
+                .rev()
+                .find_map(|(idx, height)| {
+                    (height + max_height <= heights[end - 1]).then_some(idx + 1)
+                })
+                .unwrap_or(0);
+            (start, end)
+        } else {
+            let start = prior_offset;
+            let end = heights
+                .iter()
+                .enumerate()
+                .find_map(|(idx, &height)| (heights[start] + max_height <= height).then_some(idx))
+                .unwrap_or(self.items.len());
+            (start, end)
+        }
+    }
+}
+
 impl<'a> StatefulWidget for Tree<'a> {
     type State = TreeState;
 
     fn render(self, area: Rect, buf: &mut Buffer, state: &mut Self::State) {
         buf.set_style(area, self.style);
 
-        let area = self.block.map_or(area, |block| {
+        let area = self.block.clone().map_or(area, |block| {
             let inner_area = block.inner(area);
             block.render(area, buf);
             inner_area
         });
 
+        let (start, end) = self.bounds(state.position, state.offset, area.height as usize);
+        state.offset = start;
+
         let mut item_bottom = area.top();
-        for (item_idx, item) in self.items.iter().enumerate() {
+        for (item_idx, item) in self.items.iter().enumerate().take(end).skip(start) {
             let item_top = item_bottom;
-            if item_top + item.contents.height() as u16 > area.bottom() {
-                break;
-            }
             let indent = 2 * (item.index.len() as u16 - 1);
             let area = Rect::new(
                 area.left() + indent,
