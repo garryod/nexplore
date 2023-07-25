@@ -66,7 +66,7 @@ fn run(
         if event::poll(Duration::from_millis(250))? {
             if let Event::Key(key) = event::read()? {
                 match key.code {
-                    KeyCode::Char('q') => break,
+                    KeyCode::Esc | KeyCode::Char('q') => break,
                     KeyCode::Up | KeyCode::Char('k') => tree_state.move_up(),
                     KeyCode::Down | KeyCode::Char('j') => {
                         tree_state.move_down(&file_info.to_tree_items())
