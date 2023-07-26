@@ -2,7 +2,6 @@ use crate::{
     h5file::{DatasetInfo, DatasetLayoutInfo, EntityInfo, GroupInfo},
     widgets::tree::{Tree, TreeItem, TreeState},
 };
-use derive_more::Deref;
 use humansize::{format_size, ToF64, Unsigned, BINARY};
 use ratatui::{
     backend::CrosstermBackend,
@@ -61,7 +60,7 @@ impl Screen {
     }
 }
 
-#[derive(Debug, Clone, Deref)]
+#[derive(Debug, Clone)]
 pub struct FileName<'a>(Paragraph<'a>);
 
 impl<'a> FileName<'a> {
@@ -73,7 +72,7 @@ impl<'a> FileName<'a> {
     }
 }
 
-#[derive(Debug, Clone, Deref)]
+#[derive(Debug, Clone)]
 pub struct FileSize<'a>(Paragraph<'a>);
 
 impl<'a> FileSize<'a> {
