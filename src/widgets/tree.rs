@@ -24,7 +24,7 @@ impl<'a> TreeItem<'a> {
 }
 
 #[derive(Debug, Clone)]
-pub struct FlatItem<'a> {
+struct FlatItem<'a> {
     index: Vec<usize>,
     contents: Text<'a>,
     color: Color,
