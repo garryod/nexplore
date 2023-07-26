@@ -14,7 +14,6 @@ use h5file::FileInfo;
 use ratatui::{backend::CrosstermBackend, Terminal};
 use std::{io::Stdout, path::PathBuf, time::Duration};
 use ui::{ContentsTree, FileName, FileSize};
-use widgets::tree::TreeState;
 
 #[derive(Debug, Parser)]
 #[clap(author, version, about, long_about = None)]
@@ -52,36 +51,28 @@ fn run(
     let screen = Screen::default();
     let file_name = FileName::new(file_info.name.clone());
     let file_size = FileSize::new(file_info.size);
-    let contents_tree = ContentsTree::new(file_info.to_tree_items());
-    let mut contents_tree_state = TreeState::default();
+    let mut contents_tree = ContentsTree::new(file_info.to_tree_items());
     loop {
-        let selected_entity = file_info
-            .entity(
-                contents_tree_state
-                    .position(&file_info.to_tree_items())
-                    .unwrap(),
-            )
+        let entity_info = file_info
+            .entity(contents_tree.state.position().unwrap())
             .context("Could not find selected entity")?;
         terminal.draw(|frame| {
             screen.render(
                 frame,
-                file_name.clone(),
-                file_size.clone(),
-                contents_tree.clone(),
-                &mut contents_tree_state,
-                selected_entity,
+                &file_name,
+                &file_size,
+                &mut contents_tree,
+                entity_info,
             )
         })?;
         if event::poll(Duration::from_millis(250))? {
             if let Event::Key(key) = event::read()? {
                 match key.code {
                     KeyCode::Esc | KeyCode::Char('q') => break,
-                    KeyCode::Up | KeyCode::Char('k') => contents_tree_state.move_up(),
-                    KeyCode::Down | KeyCode::Char('j') => {
-                        contents_tree_state.move_down(&file_info.to_tree_items())
-                    }
-                    KeyCode::PageUp => contents_tree_state.page_up(),
-                    KeyCode::PageDown => contents_tree_state.page_down(&file_info.to_tree_items()),
+                    KeyCode::Up | KeyCode::Char('k') => contents_tree.state.move_up(),
+                    KeyCode::Down | KeyCode::Char('j') => contents_tree.state.move_down(),
+                    KeyCode::PageUp => contents_tree.state.page_up(),
+                    KeyCode::PageDown => contents_tree.state.page_down(),
                     _ => {}
                 }
             }

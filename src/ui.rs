@@ -42,18 +42,21 @@ impl Screen {
     pub fn render(
         &self,
         frame: &mut Frame<'_, CrosstermBackend<Stdout>>,
-        file_name: FileName,
-        file_size: FileSize,
-        contents_tree: ContentsTree,
-        contents_tree_state: &mut TreeState,
+        file_name: &FileName,
+        file_size: &FileSize,
+        contents_tree: &mut ContentsTree,
         entity_info: impl Widget,
     ) {
         let vertical_chunks = self.frame_layout.split(frame.size());
         let header_chunks = self.header_layout.split(vertical_chunks[0]);
-        frame.render_widget(file_name.0, header_chunks[0]);
-        frame.render_widget(file_size.0, header_chunks[1]);
+        frame.render_widget(file_name.0.clone(), header_chunks[0]);
+        frame.render_widget(file_size.0.clone(), header_chunks[1]);
         let data_chunks = self.data_layout.split(vertical_chunks[1]);
-        frame.render_stateful_widget(contents_tree.0, data_chunks[0], contents_tree_state);
+        frame.render_stateful_widget(
+            contents_tree.widget.clone(),
+            data_chunks[0],
+            &mut contents_tree.state,
+        );
         frame.render_widget(entity_info, data_chunks[1]);
     }
 }
@@ -82,12 +85,18 @@ impl<'a> FileSize<'a> {
     }
 }
 
-#[derive(Debug, Clone, Deref)]
-pub struct ContentsTree<'a>(Tree<'a>);
+#[derive(Debug, Clone)]
+pub struct ContentsTree<'a> {
+    pub widget: Tree<'a>,
+    pub state: TreeState<'a>,
+}
 
 impl<'a> ContentsTree<'a> {
     pub fn new(items: TreeItems<'a>) -> Self {
-        Self(Tree::new(items).block(Block::default().title("Contents").borders(Borders::ALL)))
+        Self {
+            widget: Tree::default().block(Block::default().title("Contents").borders(Borders::ALL)),
+            state: TreeState::new(items),
+        }
     }
 }
 

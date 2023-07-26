@@ -40,39 +40,50 @@ impl<'i> From<Vec<TreeItem<'i>>> for TreeItems<'i> {
     }
 }
 
-#[derive(Debug, Default)]
-pub struct TreeState {
+#[derive(Debug, Clone)]
+pub struct TreeState<'a> {
+    items: TreeItems<'a>,
     position: usize,
     start: usize,
     end: usize,
 }
 
-impl TreeState {
-    pub fn position(&self, items: &TreeItems) -> Option<Vec<usize>> {
-        items.get(self.position).map(|item| item.index.clone())
+impl<'a> TreeState<'a> {
+    pub fn new(items: TreeItems<'a>) -> Self {
+        TreeState {
+            items,
+            position: Default::default(),
+            start: Default::default(),
+            end: Default::default(),
+        }
     }
 
-    pub fn move_down(&mut self, items: &TreeItems) {
-        self.position = self.position.saturating_add(1).min(items.len() - 1);
+    pub fn position(&self) -> Option<Vec<usize>> {
+        self.items.get(self.position).map(|item| item.index.clone())
+    }
+
+    pub fn move_down(&mut self) {
+        self.position = self.position.saturating_add(1).min(self.items.len() - 1);
     }
 
     pub fn move_up(&mut self) {
         self.position = self.position.saturating_sub(1);
     }
 
-    pub fn page_down(&mut self, items: &TreeItems) {
+    pub fn page_down(&mut self) {
         self.position = self
             .position
             .saturating_add(self.end - self.start - 1)
-            .min(items.len() - 1);
+            .min(self.items.len() - 1);
     }
 
     pub fn page_up(&mut self) {
         self.position = self.position.saturating_sub(self.end - self.start - 1);
     }
 
-    fn update_bounds(&mut self, items: &TreeItems, max_height: usize) {
-        let heights = items
+    fn update_bounds(&mut self, max_height: usize) {
+        let heights = self
+            .items
             .iter()
             .scan(0, |acc, item| {
                 *acc += item.contents.height();
@@ -88,7 +99,7 @@ impl TreeState {
                 .find_map(|(idx, &height)| {
                     (heights[self.start] + max_height <= height).then_some(idx)
                 })
-                .unwrap_or(items.len());
+                .unwrap_or(self.items.len());
         } else if heights[self.start] + max_height <= heights[self.position] {
             self.end = self.position + 1;
             self.start = heights
@@ -106,28 +117,18 @@ impl TreeState {
                 .find_map(|(idx, &height)| {
                     (heights[self.start] + max_height <= height).then_some(idx)
                 })
-                .unwrap_or(items.len());
+                .unwrap_or(self.items.len());
         }
     }
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Default)]
 pub struct Tree<'i> {
-    items: TreeItems<'i>,
     style: Style,
     block: Option<Block<'i>>,
 }
 
 impl<'i> Tree<'i> {
-    #[must_use]
-    pub fn new(items: TreeItems<'i>) -> Self {
-        Self {
-            items,
-            style: Style::default(),
-            block: None,
-        }
-    }
-
     #[must_use]
     pub fn block(mut self, block: Block<'i>) -> Self {
         self.block = Some(block);
@@ -136,7 +137,7 @@ impl<'i> Tree<'i> {
 }
 
 impl<'a> StatefulWidget for Tree<'a> {
-    type State = TreeState;
+    type State = TreeState<'a>;
 
     fn render(self, area: Rect, buf: &mut Buffer, state: &mut Self::State) {
         buf.set_style(area, self.style);
@@ -147,10 +148,10 @@ impl<'a> StatefulWidget for Tree<'a> {
             inner_area
         });
 
-        state.update_bounds(&self.items, area.height as usize);
+        state.update_bounds(area.height as usize);
 
         let mut item_bottom = area.top();
-        for (item_idx, item) in self
+        for (item_idx, item) in state
             .items
             .iter()
             .enumerate()
