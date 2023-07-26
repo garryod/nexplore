@@ -76,10 +76,12 @@ fn run(
             if let Event::Key(key) = event::read()? {
                 match key.code {
                     KeyCode::Esc | KeyCode::Char('q') => break,
-                    KeyCode::Up | KeyCode::Char('k') => tree_state.move_up(),
+                    KeyCode::Up | KeyCode::Char('k') => contents_tree_state.move_up(),
                     KeyCode::Down | KeyCode::Char('j') => {
-                        tree_state.move_down(&file_info.to_tree_items())
+                        contents_tree_state.move_down(&file_info.to_tree_items())
                     }
+                    KeyCode::PageUp => contents_tree_state.page_up(),
+                    KeyCode::PageDown => contents_tree_state.page_down(&file_info.to_tree_items()),
                     _ => {}
                 }
             }
