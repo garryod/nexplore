@@ -43,7 +43,8 @@ impl<'i> From<Vec<TreeItem<'i>>> for TreeItems<'i> {
 #[derive(Debug, Default)]
 pub struct TreeState {
     position: usize,
-    offset: usize,
+    start: usize,
+    end: usize,
 }
 
 impl TreeState {
@@ -57,6 +58,56 @@ impl TreeState {
 
     pub fn move_up(&mut self) {
         self.position = self.position.saturating_sub(1);
+    }
+
+    pub fn page_down(&mut self, items: &TreeItems) {
+        self.position = self
+            .position
+            .saturating_add(self.end - self.start - 1)
+            .min(items.len() - 1);
+    }
+
+    pub fn page_up(&mut self) {
+        self.position = self.position.saturating_sub(self.end - self.start - 1);
+    }
+
+    fn update_bounds(&mut self, items: &TreeItems, max_height: usize) {
+        let heights = items
+            .iter()
+            .scan(0, |acc, item| {
+                *acc += item.contents.height();
+                Some(*acc)
+            })
+            .collect::<Vec<_>>();
+
+        if self.position < self.start {
+            self.start = self.position;
+            self.end = heights
+                .iter()
+                .enumerate()
+                .find_map(|(idx, &height)| {
+                    (heights[self.start] + max_height <= height).then_some(idx)
+                })
+                .unwrap_or(items.len());
+        } else if heights[self.start] + max_height <= heights[self.position] {
+            self.end = self.position + 1;
+            self.start = heights
+                .iter()
+                .enumerate()
+                .rev()
+                .find_map(|(idx, height)| {
+                    (height + max_height <= heights[self.end - 1]).then_some(idx + 1)
+                })
+                .unwrap_or(0);
+        } else {
+            self.end = heights
+                .iter()
+                .enumerate()
+                .find_map(|(idx, &height)| {
+                    (heights[self.start] + max_height <= height).then_some(idx)
+                })
+                .unwrap_or(items.len());
+        }
     }
 }
 
@@ -84,48 +135,6 @@ impl<'i> Tree<'i> {
     }
 }
 
-impl<'i> Tree<'i> {
-    fn bounds(&self, position: usize, prior_offset: usize, max_height: usize) -> (usize, usize) {
-        let heights = self
-            .items
-            .iter()
-            .scan(0, |acc, item| {
-                *acc += item.contents.height();
-                Some(*acc)
-            })
-            .collect::<Vec<_>>();
-
-        if position < prior_offset {
-            let start = position;
-            let end = heights
-                .iter()
-                .enumerate()
-                .find_map(|(idx, &height)| (heights[start] + max_height <= height).then_some(idx))
-                .unwrap_or(self.items.len());
-            (start, end)
-        } else if heights[prior_offset] + max_height <= heights[position] {
-            let end = position + 1;
-            let start = heights
-                .iter()
-                .enumerate()
-                .rev()
-                .find_map(|(idx, height)| {
-                    (height + max_height <= heights[end - 1]).then_some(idx + 1)
-                })
-                .unwrap_or(0);
-            (start, end)
-        } else {
-            let start = prior_offset;
-            let end = heights
-                .iter()
-                .enumerate()
-                .find_map(|(idx, &height)| (heights[start] + max_height <= height).then_some(idx))
-                .unwrap_or(self.items.len());
-            (start, end)
-        }
-    }
-}
-
 impl<'a> StatefulWidget for Tree<'a> {
     type State = TreeState;
 
@@ -138,11 +147,16 @@ impl<'a> StatefulWidget for Tree<'a> {
             inner_area
         });
 
-        let (start, end) = self.bounds(state.position, state.offset, area.height as usize);
-        state.offset = start;
+        state.update_bounds(&self.items, area.height as usize);
 
         let mut item_bottom = area.top();
-        for (item_idx, item) in self.items.iter().enumerate().take(end).skip(start) {
+        for (item_idx, item) in self
+            .items
+            .iter()
+            .enumerate()
+            .take(state.end)
+            .skip(state.start)
+        {
             let item_top = item_bottom;
             let indent = 2 * (item.index.len() as u16 - 1);
             let area = Rect::new(
