@@ -1,4 +1,4 @@
-use crate::widgets::tree::{TreeItem, TreeItems};
+use crate::widgets::tree::TreeItem;
 use anyhow::{anyhow, Context};
 use hdf5::{dataset::Layout, filters::Filter, Dataset, File, Group};
 use std::path::Path;
@@ -133,13 +133,11 @@ impl FileInfo {
         Ok(entity.clone())
     }
 
-    pub fn to_tree_items(&self) -> TreeItems {
-        TreeItems::from(
-            self.entities
-                .iter()
-                .cloned()
-                .map(TreeItem::from)
-                .collect::<Vec<_>>(),
-        )
+    pub fn to_tree_items(&self) -> Vec<TreeItem<'_>> {
+        self.entities
+            .iter()
+            .cloned()
+            .map(TreeItem::from)
+            .collect::<Vec<_>>()
     }
 }

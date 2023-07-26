@@ -1,4 +1,3 @@
-use derive_more::Deref;
 use ratatui::{
     buffer::Buffer,
     layout::Rect,
@@ -31,27 +30,18 @@ pub struct FlatItem<'a> {
     color: Color,
 }
 
-#[derive(Debug, Clone, Deref)]
-pub struct TreeItems<'i>(pub Vec<FlatItem<'i>>);
-
-impl<'i> From<Vec<TreeItem<'i>>> for TreeItems<'i> {
-    fn from(items: Vec<TreeItem<'i>>) -> Self {
-        Self(flatten(items))
-    }
-}
-
 #[derive(Debug, Clone)]
 pub struct TreeState<'a> {
-    items: TreeItems<'a>,
+    items: Vec<FlatItem<'a>>,
     position: usize,
     start: usize,
     end: usize,
 }
 
 impl<'a> TreeState<'a> {
-    pub fn new(items: TreeItems<'a>) -> Self {
+    pub fn new(items: Vec<TreeItem<'a>>) -> Self {
         TreeState {
-            items,
+            items: flatten(items),
             position: Default::default(),
             start: Default::default(),
             end: Default::default(),

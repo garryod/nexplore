@@ -1,6 +1,6 @@
 use crate::{
     h5file::{DatasetInfo, DatasetLayoutInfo, EntityInfo, GroupInfo},
-    widgets::tree::{Tree, TreeItem, TreeItems, TreeState},
+    widgets::tree::{Tree, TreeItem, TreeState},
 };
 use derive_more::Deref;
 use humansize::{format_size, ToF64, Unsigned, BINARY};
@@ -92,7 +92,7 @@ pub struct ContentsTree<'a> {
 }
 
 impl<'a> ContentsTree<'a> {
-    pub fn new(items: TreeItems<'a>) -> Self {
+    pub fn new(items: Vec<TreeItem<'a>>) -> Self {
         Self {
             widget: Tree::default().block(Block::default().title("Contents").borders(Borders::ALL)),
             state: TreeState::new(items),
