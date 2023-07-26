@@ -2,67 +2,109 @@ use crate::{
     h5file::{DatasetInfo, DatasetLayoutInfo, EntityInfo, GroupInfo},
     widgets::tree::{Tree, TreeItem, TreeItems, TreeState},
 };
-use humansize::{format_size, BINARY};
+use derive_more::Deref;
+use humansize::{format_size, ToF64, Unsigned, BINARY};
 use ratatui::{
-    backend::{Backend, CrosstermBackend},
+    backend::CrosstermBackend,
+    buffer::Buffer,
     layout::{Constraint, Direction, Layout, Rect},
     style::{Color, Style},
     text::Text,
-    widgets::{Block, Borders, Cell, Paragraph, Row, Table},
+    widgets::{Block, Borders, Cell, Paragraph, Row, Table, Widget},
     Frame,
 };
 use std::io::Stdout;
 
-pub fn render(
-    frame: &mut Frame<'_, CrosstermBackend<Stdout>>,
-    tree_state: &mut TreeState,
-    tree_items: TreeItems,
-    file_name: String,
-    file_size: u64,
-    selected_entity: EntityInfo,
-) {
-    let vertical_chunks = Layout::default()
-        .direction(Direction::Vertical)
-        .constraints([Constraint::Length(3), Constraint::Ratio(1, 1)])
-        .split(frame.size());
-    let header_chunks = Layout::default()
-        .direction(Direction::Horizontal)
-        .constraints([Constraint::Ratio(4, 5), Constraint::Ratio(1, 5)])
-        .split(vertical_chunks[0]);
-    let file_name = Paragraph::new(file_name.clone())
-        .block(Block::default().title("File Name").borders(Borders::ALL));
-    frame.render_widget(file_name, header_chunks[0]);
-    let file_size = Paragraph::new(format_size(file_size, BINARY))
-        .block(Block::default().title("Size").borders(Borders::ALL));
-    frame.render_widget(file_size, header_chunks[1]);
-    let data_chunks = Layout::default()
-        .direction(Direction::Horizontal)
-        .constraints([Constraint::Ratio(2, 5), Constraint::Ratio(3, 5)])
-        .split(vertical_chunks[1]);
-    let contents_tree =
-        Tree::new(tree_items).block(Block::default().title("Contents").borders(Borders::ALL));
-    frame.render_stateful_widget(contents_tree, data_chunks[0], tree_state);
-    selected_entity.render(frame, data_chunks[1]);
+#[derive(Debug)]
+pub struct Screen {
+    frame_layout: Layout,
+    header_layout: Layout,
+    data_layout: Layout,
 }
 
-pub trait Render<'f, B: Backend> {
-    fn render(&self, frame: &mut Frame<'f, B>, area: Rect);
+impl Default for Screen {
+    fn default() -> Self {
+        Self {
+            frame_layout: Layout::default()
+                .direction(Direction::Vertical)
+                .constraints([Constraint::Length(3), Constraint::Ratio(1, 1)]),
+            header_layout: Layout::default()
+                .direction(Direction::Horizontal)
+                .constraints([Constraint::Ratio(4, 5), Constraint::Ratio(1, 5)]),
+            data_layout: Layout::default()
+                .direction(Direction::Horizontal)
+                .constraints([Constraint::Ratio(2, 5), Constraint::Ratio(3, 5)]),
+        }
+    }
 }
 
-impl<'f, B: Backend> Render<'f, B> for EntityInfo {
-    fn render(&self, frame: &mut Frame<'f, B>, area: Rect) {
+impl Screen {
+    pub fn render(
+        &self,
+        frame: &mut Frame<'_, CrosstermBackend<Stdout>>,
+        file_name: FileName,
+        file_size: FileSize,
+        contents_tree: ContentsTree,
+        contents_tree_state: &mut TreeState,
+        entity_info: impl Widget,
+    ) {
+        let vertical_chunks = self.frame_layout.split(frame.size());
+        let header_chunks = self.header_layout.split(vertical_chunks[0]);
+        frame.render_widget(file_name.0, header_chunks[0]);
+        frame.render_widget(file_size.0, header_chunks[1]);
+        let data_chunks = self.data_layout.split(vertical_chunks[1]);
+        frame.render_stateful_widget(contents_tree.0, data_chunks[0], contents_tree_state);
+        frame.render_widget(entity_info, data_chunks[1]);
+    }
+}
+
+#[derive(Debug, Clone, Deref)]
+pub struct FileName<'a>(Paragraph<'a>);
+
+impl<'a> FileName<'a> {
+    pub fn new(file_name: impl AsRef<str>) -> Self {
+        Self(
+            Paragraph::new(file_name.as_ref().to_string())
+                .block(Block::default().title("File").borders(Borders::ALL)),
+        )
+    }
+}
+
+#[derive(Debug, Clone, Deref)]
+pub struct FileSize<'a>(Paragraph<'a>);
+
+impl<'a> FileSize<'a> {
+    pub fn new(file_size: impl ToF64 + Unsigned) -> Self {
+        Self(
+            Paragraph::new(format_size(file_size, BINARY))
+                .block(Block::default().title("Size").borders(Borders::ALL)),
+        )
+    }
+}
+
+#[derive(Debug, Clone, Deref)]
+pub struct ContentsTree<'a>(Tree<'a>);
+
+impl<'a> ContentsTree<'a> {
+    pub fn new(items: TreeItems<'a>) -> Self {
+        Self(Tree::new(items).block(Block::default().title("Contents").borders(Borders::ALL)))
+    }
+}
+
+impl Widget for EntityInfo {
+    fn render(self, area: Rect, buf: &mut Buffer) {
         match self {
-            EntityInfo::Group(group) => group.render(frame, area),
-            EntityInfo::Dataset(dataset) => dataset.render(frame, area),
+            EntityInfo::Group(group) => group.render(area, buf),
+            EntityInfo::Dataset(dataset) => dataset.render(area, buf),
         }
     }
 }
 
 const GROUP_COLOR: Color = Color::Blue;
 
-impl<'f, B: Backend> Render<'f, B> for GroupInfo {
-    fn render(&self, frame: &mut Frame<'f, B>, area: Rect) {
-        let widget = Table::new(vec![Row::new(vec![
+impl Widget for GroupInfo {
+    fn render(self, area: Rect, buf: &mut Buffer) {
+        Table::new(vec![Row::new(vec![
             Cell::from("ID"),
             Cell::from(self.id.to_string()),
         ])])
@@ -72,8 +114,8 @@ impl<'f, B: Backend> Render<'f, B> for GroupInfo {
                 .title(self.name.clone())
                 .border_style(Style::new().fg(GROUP_COLOR))
                 .borders(Borders::ALL),
-        );
-        frame.render_widget(widget, area);
+        )
+        .render(area, buf);
     }
 }
 
@@ -89,8 +131,8 @@ impl From<GroupInfo> for TreeItem<'_> {
 
 const DATASET_COLOR: Color = Color::Green;
 
-impl<'f, B: Backend> Render<'f, B> for DatasetInfo {
-    fn render(&self, frame: &mut Frame<'f, B>, area: Rect) {
+impl Widget for DatasetInfo {
+    fn render(self, area: Rect, buf: &mut Buffer) {
         let mut rows = vec![
             Row::new(vec![Cell::from("ID"), Cell::from(self.id.to_string())]),
             Row::new(vec![
@@ -132,15 +174,15 @@ impl<'f, B: Backend> Render<'f, B> for DatasetInfo {
             DatasetLayoutInfo::Virtial {} => {}
         }
 
-        let widget = Table::new(rows)
+        Table::new(rows)
             .widths(&[Constraint::Ratio(1, 2), Constraint::Ratio(1, 2)])
             .block(
                 Block::default()
                     .title(self.name.clone())
                     .border_style(Style::new().fg(DATASET_COLOR))
                     .borders(Borders::ALL),
-            );
-        frame.render_widget(widget, area);
+            )
+            .render(area, buf);
     }
 }
 

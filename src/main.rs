@@ -2,7 +2,7 @@ mod h5file;
 mod ui;
 pub mod widgets;
 
-use crate::ui::render;
+use crate::ui::Screen;
 use anyhow::Context;
 use clap::Parser;
 use crossterm::{
@@ -13,6 +13,7 @@ use crossterm::{
 use h5file::FileInfo;
 use ratatui::{backend::CrosstermBackend, Terminal};
 use std::{io::Stdout, path::PathBuf, time::Duration};
+use ui::{ContentsTree, FileName, FileSize};
 use widgets::tree::TreeState;
 
 #[derive(Debug, Parser)]
@@ -48,18 +49,26 @@ fn run(
     terminal: &mut Terminal<CrosstermBackend<Stdout>>,
     file_info: FileInfo,
 ) -> Result<(), anyhow::Error> {
-    let mut tree_state = TreeState::default();
+    let screen = Screen::default();
+    let file_name = FileName::new(file_info.name.clone());
+    let file_size = FileSize::new(file_info.size);
+    let contents_tree = ContentsTree::new(file_info.to_tree_items());
+    let mut contents_tree_state = TreeState::default();
     loop {
         let selected_entity = file_info
-            .entity(tree_state.position(&file_info.to_tree_items()).unwrap())
+            .entity(
+                contents_tree_state
+                    .position(&file_info.to_tree_items())
+                    .unwrap(),
+            )
             .context("Could not find selected entity")?;
         terminal.draw(|frame| {
-            render(
+            screen.render(
                 frame,
-                &mut tree_state,
-                file_info.to_tree_items(),
-                file_info.name.clone(),
-                file_info.size,
+                file_name.clone(),
+                file_size.clone(),
+                contents_tree.clone(),
+                &mut contents_tree_state,
                 selected_entity,
             )
         })?;

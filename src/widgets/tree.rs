@@ -24,14 +24,14 @@ impl<'a> TreeItem<'a> {
     }
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct FlatItem<'a> {
     index: Vec<usize>,
     contents: Text<'a>,
     color: Color,
 }
 
-#[derive(Debug, Deref)]
+#[derive(Debug, Clone, Deref)]
 pub struct TreeItems<'i>(pub Vec<FlatItem<'i>>);
 
 impl<'i> From<Vec<TreeItem<'i>>> for TreeItems<'i> {
@@ -60,7 +60,7 @@ impl TreeState {
     }
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct Tree<'i> {
     items: TreeItems<'i>,
     style: Style,
