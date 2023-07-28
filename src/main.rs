@@ -15,9 +15,11 @@ use ratatui::{backend::CrosstermBackend, Terminal};
 use std::{io::Stdout, path::PathBuf, time::Duration};
 use ui::{ContentsTree, FileName, FileSize};
 
+/// A TUI for exploring HDF5 and NeXus files.
 #[derive(Debug, Parser)]
 #[clap(author, version, about, long_about = None)]
 struct Cli {
+    /// The path to the HDF5 or NeXus file to open.
     path: PathBuf,
 }
 
