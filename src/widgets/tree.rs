@@ -11,6 +11,7 @@ pub struct TreeItem<'a> {
     contents: Text<'a>,
     color: Color,
     children: Vec<TreeItem<'a>>,
+    expanded: bool,
 }
 
 impl<'a> TreeItem<'a> {
@@ -19,6 +20,7 @@ impl<'a> TreeItem<'a> {
             contents,
             color,
             children,
+            expanded: true,
         }
     }
 }
@@ -76,6 +78,31 @@ impl<'a> TreeState<'a> {
         self.position = self.position.saturating_sub(self.end - self.start - 1);
     }
 
+    fn selected_mut(&mut self) -> Option<&mut TreeItem<'a>> {
+        if let Some(index) = self.position() {
+            let mut indidecs = index.into_iter();
+            let mut item = self.items.get_mut(indidecs.next()?)?;
+            for idx in indidecs {
+                item = item.children.get_mut(idx)?;
+            }
+            Some(item)
+        } else {
+            None
+        }
+    }
+
+    pub fn expand(&mut self) {
+        if let Some(selected) = self.selected_mut() {
+            selected.expanded = true;
+        }
+    }
+
+    pub fn collapse(&mut self) {
+        if let Some(selected) = self.selected_mut() {
+            selected.expanded = false;
+        }
+    }
+
     fn displayed_items(&self) -> Vec<FlatItem> {
         let mut to_flatten = self
             .items
@@ -90,22 +117,24 @@ impl<'a> TreeState<'a> {
                 contents: item.contents.clone(),
                 color: item.color,
             });
-            to_flatten.extend(
-                item.children
-                    .iter()
-                    .enumerate()
-                    .map(|(child_index, item)| {
-                        (
-                            index
-                                .iter()
-                                .cloned()
-                                .chain(std::iter::once(child_index))
-                                .collect(),
-                            item,
-                        )
-                    })
-                    .rev(),
-            );
+            if item.expanded {
+                to_flatten.extend(
+                    item.children
+                        .iter()
+                        .enumerate()
+                        .map(|(child_index, item)| {
+                            (
+                                index
+                                    .iter()
+                                    .cloned()
+                                    .chain(std::iter::once(child_index))
+                                    .collect(),
+                                item,
+                            )
+                        })
+                        .rev(),
+                );
+            }
         }
         entries
     }

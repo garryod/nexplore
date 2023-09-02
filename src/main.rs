@@ -75,6 +75,8 @@ fn run(
                     KeyCode::Down | KeyCode::Char('j') => contents_tree.state.move_down(),
                     KeyCode::PageUp => contents_tree.state.page_up(),
                     KeyCode::PageDown => contents_tree.state.page_down(),
+                    KeyCode::Left | KeyCode::Char('h') => contents_tree.state.collapse(),
+                    KeyCode::Right | KeyCode::Char('l') => contents_tree.state.expand(),
                     _ => {}
                 }
             }
