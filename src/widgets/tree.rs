@@ -6,7 +6,7 @@ use ratatui::{
     widgets::{Block, StatefulWidget, Widget},
 };
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct TreeItem<'a> {
     contents: Text<'a>,
     color: Color,
@@ -32,7 +32,7 @@ struct FlatItem<'a> {
 
 #[derive(Debug, Clone)]
 pub struct TreeState<'a> {
-    items: Vec<FlatItem<'a>>,
+    items: Vec<TreeItem<'a>>,
     position: usize,
     start: usize,
     end: usize,
@@ -41,7 +41,7 @@ pub struct TreeState<'a> {
 impl<'a> TreeState<'a> {
     pub fn new(items: Vec<TreeItem<'a>>) -> Self {
         TreeState {
-            items: flatten(items),
+            items,
             position: Default::default(),
             start: Default::default(),
             end: Default::default(),
@@ -49,11 +49,16 @@ impl<'a> TreeState<'a> {
     }
 
     pub fn position(&self) -> Option<Vec<usize>> {
-        self.items.get(self.position).map(|item| item.index.clone())
+        self.displayed_items()
+            .get(self.position)
+            .map(|item| item.index.clone())
     }
 
     pub fn move_down(&mut self) {
-        self.position = self.position.saturating_add(1).min(self.items.len() - 1);
+        self.position = self
+            .position
+            .saturating_add(1)
+            .min(self.displayed_items().len() - 1);
     }
 
     pub fn move_up(&mut self) {
@@ -64,16 +69,50 @@ impl<'a> TreeState<'a> {
         self.position = self
             .position
             .saturating_add(self.end - self.start - 1)
-            .min(self.items.len() - 1);
+            .min(self.displayed_items().len() - 1);
     }
 
     pub fn page_up(&mut self) {
         self.position = self.position.saturating_sub(self.end - self.start - 1);
     }
 
+    fn displayed_items(&self) -> Vec<FlatItem> {
+        let mut to_flatten = self
+            .items
+            .iter()
+            .enumerate()
+            .map(|(index, item)| (vec![index], item))
+            .collect::<Vec<_>>();
+        let mut entries = Vec::default();
+        while let Some((index, item)) = to_flatten.pop() {
+            entries.push(FlatItem {
+                index: index.clone(),
+                contents: item.contents.clone(),
+                color: item.color,
+            });
+            to_flatten.extend(
+                item.children
+                    .iter()
+                    .enumerate()
+                    .map(|(child_index, item)| {
+                        (
+                            index
+                                .iter()
+                                .cloned()
+                                .chain(std::iter::once(child_index))
+                                .collect(),
+                            item,
+                        )
+                    })
+                    .rev(),
+            );
+        }
+        entries
+    }
+
     fn update_bounds(&mut self, max_height: usize) {
         let heights = self
-            .items
+            .displayed_items()
             .iter()
             .scan(0, |acc, item| {
                 *acc += item.contents.height();
@@ -89,7 +128,7 @@ impl<'a> TreeState<'a> {
                 .find_map(|(idx, &height)| {
                     (heights[self.start] + max_height <= height).then_some(idx)
                 })
-                .unwrap_or(self.items.len());
+                .unwrap_or(self.displayed_items().len());
         } else if heights[self.start] + max_height <= heights[self.position] {
             self.end = self.position + 1;
             self.start = heights
@@ -107,7 +146,7 @@ impl<'a> TreeState<'a> {
                 .find_map(|(idx, &height)| {
                     (heights[self.start] + max_height <= height).then_some(idx)
                 })
-                .unwrap_or(self.items.len());
+                .unwrap_or(self.displayed_items().len());
         }
     }
 }
@@ -142,7 +181,7 @@ impl<'a> StatefulWidget for Tree<'a> {
 
         let mut item_bottom = area.top();
         for (item_idx, item) in state
-            .items
+            .displayed_items()
             .iter()
             .enumerate()
             .take(state.end)
@@ -169,37 +208,4 @@ impl<'a> StatefulWidget for Tree<'a> {
             item_bottom += item.contents.height() as u16;
         }
     }
-}
-
-fn flatten(items: Vec<TreeItem>) -> Vec<FlatItem> {
-    let mut to_flatten = items
-        .into_iter()
-        .enumerate()
-        .map(|(index, item)| (vec![index], item))
-        .collect::<Vec<_>>();
-    let mut entries = Vec::default();
-    while let Some((index, item)) = to_flatten.pop() {
-        entries.push(FlatItem {
-            index: index.clone(),
-            contents: item.contents,
-            color: item.color,
-        });
-        to_flatten.extend(
-            item.children
-                .into_iter()
-                .enumerate()
-                .map(|(child_index, item)| {
-                    (
-                        index
-                            .iter()
-                            .cloned()
-                            .chain(std::iter::once(child_index))
-                            .collect(),
-                        item,
-                    )
-                })
-                .rev(),
-        );
-    }
-    entries
 }
