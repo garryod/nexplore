@@ -31,19 +31,20 @@ impl TryFrom<Group> for GroupInfo {
     fn try_from(group: Group) -> Result<Self, Self::Error> {
         let name = group.name().split('/').last().unwrap().to_string();
         let id = group.id();
-        let mut entities = group
-            .groups()?
+        let entities = group
+            .iter_visit_default(Vec::new(), |group, key, _, entities| {
+                let entity = if let Ok(group) = group.group(key) {
+                    GroupInfo::try_from(group).map(EntityInfo::Group)
+                } else if let Ok(dataset) = group.dataset(key) {
+                    Ok(EntityInfo::Dataset(DatasetInfo::from(dataset)))
+                } else {
+                    Err(anyhow!("Found link to entity of unknown kind"))
+                };
+                entities.push(entity);
+                true
+            })?
             .into_iter()
-            .map(GroupInfo::try_from)
-            .map(|group| group.map(EntityInfo::Group))
             .collect::<Result<Vec<_>, _>>()?;
-        entities.extend(
-            group
-                .datasets()?
-                .into_iter()
-                .map(DatasetInfo::from)
-                .map(EntityInfo::Dataset),
-        );
         Ok(Self { name, id, entities })
     }
 }
