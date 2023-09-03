@@ -112,10 +112,13 @@ const GROUP_COLOR: Color = Color::Blue;
 
 impl Widget for GroupInfo {
     fn render(self, area: Rect, buf: &mut Buffer) {
-        Table::new(vec![Row::new(vec![
-            Cell::from("ID"),
-            Cell::from(self.id.to_string()),
-        ])])
+        Table::new(vec![
+            Row::new(vec![Cell::from("ID"), Cell::from(self.id.to_string())]),
+            Row::new(vec![
+                Cell::from("Link Type"),
+                Cell::from(self.link_kind.to_string()),
+            ]),
+        ])
         .widths(&[Constraint::Ratio(1, 2), Constraint::Ratio(1, 2)])
         .block(
             Block::default()
@@ -143,6 +146,10 @@ impl Widget for DatasetInfo {
     fn render(self, area: Rect, buf: &mut Buffer) {
         let mut rows = vec![
             Row::new(vec![Cell::from("ID"), Cell::from(self.id.to_string())]),
+            Row::new(vec![
+                Cell::from("Link Type"),
+                Cell::from(self.link_type.to_string()),
+            ]),
             Row::new(vec![
                 Cell::from("Shape"),
                 Cell::from(format!("{:?}", self.shape)),

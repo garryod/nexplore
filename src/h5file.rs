@@ -1,6 +1,6 @@
 use crate::widgets::tree::TreeItem;
 use anyhow::{anyhow, Context};
-use hdf5::{dataset::Layout, filters::Filter, Dataset, File, Group};
+use hdf5::{dataset::Layout, filters::Filter, Dataset, File, Group, LinkInfo, LinkType};
 use std::path::Path;
 
 #[derive(Debug, Clone)]
@@ -22,21 +22,22 @@ impl From<EntityInfo> for TreeItem<'_> {
 pub struct GroupInfo {
     pub name: String,
     pub id: i64,
+    pub link_kind: LinkKind,
     pub entities: Vec<EntityInfo>,
 }
 
-impl TryFrom<Group> for GroupInfo {
-    type Error = anyhow::Error;
-
-    fn try_from(group: Group) -> Result<Self, Self::Error> {
+impl GroupInfo {
+    fn try_from_group_and_link(group: Group, link: LinkInfo) -> Result<Self, anyhow::Error> {
         let name = group.name().split('/').last().unwrap().to_string();
         let id = group.id();
         let entities = group
-            .iter_visit_default(Vec::new(), |group, key, _, entities| {
+            .iter_visit_default(Vec::new(), |group, key, link, entities| {
                 let entity = if let Ok(group) = group.group(key) {
-                    GroupInfo::try_from(group).map(EntityInfo::Group)
+                    GroupInfo::try_from_group_and_link(group, link).map(EntityInfo::Group)
                 } else if let Ok(dataset) = group.dataset(key) {
-                    Ok(EntityInfo::Dataset(DatasetInfo::from(dataset)))
+                    Ok(EntityInfo::Dataset(DatasetInfo::from_dataset_and_link(
+                        dataset, link,
+                    )))
                 } else {
                     Err(anyhow!("Found link to entity of unknown kind"))
                 };
@@ -45,7 +46,12 @@ impl TryFrom<Group> for GroupInfo {
             })?
             .into_iter()
             .collect::<Result<Vec<_>, _>>()?;
-        Ok(Self { name, id, entities })
+        Ok(Self {
+            name,
+            id,
+            link_kind: link.link_type.into(),
+            entities,
+        })
     }
 }
 
@@ -53,6 +59,7 @@ impl TryFrom<Group> for GroupInfo {
 pub struct DatasetInfo {
     pub name: String,
     pub id: i64,
+    pub link_type: LinkKind,
     pub shape: Vec<usize>,
     pub layout_info: DatasetLayoutInfo,
 }
@@ -68,8 +75,8 @@ pub enum DatasetLayoutInfo {
     Virtial {},
 }
 
-impl From<Dataset> for DatasetInfo {
-    fn from(dataset: Dataset) -> Self {
+impl DatasetInfo {
+    fn from_dataset_and_link(dataset: Dataset, link: LinkInfo) -> Self {
         let name = dataset.name().split('/').last().unwrap().to_string();
         let id = dataset.id();
         let shape = dataset.shape();
@@ -85,8 +92,36 @@ impl From<Dataset> for DatasetInfo {
         Self {
             name,
             id,
+            link_type: link.link_type.into(),
             shape,
             layout_info,
+        }
+    }
+}
+
+#[derive(Debug, Clone)]
+pub enum LinkKind {
+    Hard,
+    Soft,
+    External,
+}
+
+impl From<LinkType> for LinkKind {
+    fn from(value: LinkType) -> Self {
+        match value {
+            LinkType::Hard => Self::Hard,
+            LinkType::Soft => Self::Soft,
+            LinkType::External => Self::External,
+        }
+    }
+}
+
+impl ToString for LinkKind {
+    fn to_string(&self) -> String {
+        match self {
+            Self::Hard => "Hard".to_string(),
+            Self::Soft => "Soft".to_string(),
+            Self::External => "External".to_string(),
         }
     }
 }
@@ -108,7 +143,15 @@ impl FileInfo {
             .into_owned();
         let file = File::open(path)?;
         let size = file.size();
-        let entities = GroupInfo::try_from(file.as_group()?)?.entities;
+        let entities = GroupInfo::try_from_group_and_link(
+            file.as_group()?,
+            LinkInfo {
+                link_type: LinkType::Hard,
+                creation_order: None,
+                is_utf8: true,
+            },
+        )?
+        .entities;
 
         Ok(Self {
             name,
