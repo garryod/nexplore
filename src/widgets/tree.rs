@@ -26,10 +26,10 @@ impl<'a> TreeItem<'a> {
 }
 
 #[derive(Debug, Clone)]
-struct FlatItem<'a> {
+struct ComputedItem<'a> {
+    item: &'a TreeItem<'a>,
     index: Vec<usize>,
-    contents: Text<'a>,
-    color: Color,
+    visible: bool,
 }
 
 #[derive(Debug, Clone)]
@@ -51,8 +51,10 @@ impl<'a> TreeState<'a> {
     }
 
     pub fn position(&self) -> Option<Vec<usize>> {
-        self.displayed_items()
-            .get(self.position)
+        self.items()
+            .iter()
+            .filter(|item| item.visible)
+            .nth(self.position)
             .map(|item| item.index.clone())
     }
 
@@ -60,7 +62,7 @@ impl<'a> TreeState<'a> {
         self.position = self
             .position
             .saturating_add(1)
-            .min(self.displayed_items().len() - 1);
+            .min(self.items().iter().filter(|item| item.visible).count() - 1);
     }
 
     pub fn move_up(&mut self) {
@@ -71,7 +73,7 @@ impl<'a> TreeState<'a> {
         self.position = self
             .position
             .saturating_add(self.end - self.start - 1)
-            .min(self.displayed_items().len() - 1);
+            .min(self.items().iter().filter(|item| item.visible).count() - 1);
     }
 
     pub fn page_up(&mut self) {
@@ -103,48 +105,48 @@ impl<'a> TreeState<'a> {
         }
     }
 
-    fn displayed_items(&self) -> Vec<FlatItem> {
+    fn items(&'a self) -> Vec<ComputedItem<'a>> {
         let mut to_flatten = self
             .items
             .iter()
             .enumerate()
-            .map(|(index, item)| (vec![index], item))
+            .map(|(index, item)| (vec![index], true, item))
             .collect::<Vec<_>>();
         let mut entries = Vec::default();
-        while let Some((index, item)) = to_flatten.pop() {
-            entries.push(FlatItem {
+        while let Some((index, visible, item)) = to_flatten.pop() {
+            entries.push(ComputedItem {
+                item,
                 index: index.clone(),
-                contents: item.contents.clone(),
-                color: item.color,
+                visible,
             });
-            if item.expanded {
-                to_flatten.extend(
-                    item.children
-                        .iter()
-                        .enumerate()
-                        .map(|(child_index, item)| {
-                            (
-                                index
-                                    .iter()
-                                    .cloned()
-                                    .chain(std::iter::once(child_index))
-                                    .collect(),
-                                item,
-                            )
-                        })
-                        .rev(),
-                );
-            }
+            to_flatten.extend(
+                item.children
+                    .iter()
+                    .enumerate()
+                    .map(|(child_index, child)| {
+                        (
+                            index
+                                .iter()
+                                .cloned()
+                                .chain(std::iter::once(child_index))
+                                .collect(),
+                            visible && item.expanded,
+                            child,
+                        )
+                    })
+                    .rev(),
+            );
         }
         entries
     }
 
     fn update_bounds(&mut self, max_height: usize) {
         let heights = self
-            .displayed_items()
-            .iter()
+            .items()
+            .into_iter()
+            .filter(|item| item.visible)
             .scan(0, |acc, item| {
-                *acc += item.contents.height();
+                *acc += item.item.contents.height();
                 Some(*acc)
             })
             .collect::<Vec<_>>();
@@ -157,7 +159,7 @@ impl<'a> TreeState<'a> {
                 .find_map(|(idx, &height)| {
                     (heights[self.start] + max_height <= height).then_some(idx)
                 })
-                .unwrap_or(self.displayed_items().len());
+                .unwrap_or(heights.len());
         } else if heights[self.start] + max_height <= heights[self.position] {
             self.end = self.position + 1;
             self.start = heights
@@ -175,7 +177,7 @@ impl<'a> TreeState<'a> {
                 .find_map(|(idx, &height)| {
                     (heights[self.start] + max_height <= height).then_some(idx)
                 })
-                .unwrap_or(self.displayed_items().len());
+                .unwrap_or(heights.len());
         }
     }
 }
@@ -200,18 +202,19 @@ impl<'a> StatefulWidget for Tree<'a> {
     fn render(self, area: Rect, buf: &mut Buffer, state: &mut Self::State) {
         buf.set_style(area, self.style);
 
-        let area = self.block.clone().map_or(area, |block| {
+        let inner_area = self.block.map_or(area, |block| {
             let inner_area = block.inner(area);
             block.render(area, buf);
             inner_area
         });
 
-        state.update_bounds(area.height as usize);
+        state.update_bounds(inner_area.height as usize);
 
-        let mut item_bottom = area.top();
+        let mut item_bottom = inner_area.top();
         for (item_idx, item) in state
-            .displayed_items()
+            .items()
             .iter()
+            .filter(|item| item.visible)
             .enumerate()
             .take(state.end)
             .skip(state.start)
@@ -219,22 +222,24 @@ impl<'a> StatefulWidget for Tree<'a> {
             let item_top = item_bottom;
             let indent = 2 * (item.index.len() as u16 - 1);
             let area = Rect::new(
-                area.left() + indent,
+                inner_area.left() + indent,
                 item_top,
-                area.width - indent,
-                item.contents.height() as u16,
+                inner_area.width - indent,
+                item.item.contents.height() as u16,
             );
             let style = if item_idx == state.position {
-                Style::new().bg(item.color).add_modifier(Modifier::BOLD)
+                Style::new()
+                    .bg(item.item.color)
+                    .add_modifier(Modifier::BOLD)
             } else {
-                Style::new().fg(item.color)
+                Style::new().fg(item.item.color)
             };
             buf.set_style(area, style);
 
-            for (line_idx, line) in item.contents.lines.iter().enumerate() {
+            for (line_idx, line) in item.item.contents.lines.iter().enumerate() {
                 buf.set_line(area.left(), item_top + line_idx as u16, line, area.width);
             }
-            item_bottom += item.contents.height() as u16;
+            item_bottom += item.item.contents.height() as u16;
         }
     }
 }
