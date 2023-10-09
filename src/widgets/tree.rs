@@ -3,7 +3,7 @@ use ratatui::{
     layout::Rect,
     style::{Color, Modifier, Style},
     text::Text,
-    widgets::{Block, StatefulWidget, Widget},
+    widgets::{Block, Paragraph, StatefulWidget, Widget},
 };
 use regex::Regex;
 use std::borrow::Cow;
@@ -254,7 +254,7 @@ impl<'a> StatefulWidget for Tree<'a> {
                 inner_area.width - indent,
                 item.item.contents.height() as u16,
             );
-            let style = if item_idx == state.position {
+            let style = if item_idx == state.position && state.search.is_none() {
                 Style::new()
                     .bg(item.item.color)
                     .add_modifier(Modifier::BOLD)
@@ -273,6 +273,19 @@ impl<'a> StatefulWidget for Tree<'a> {
                 buf.set_line(area.left(), item_top + line_idx as u16, line, area.width);
             }
             item_bottom += item.item.contents.height() as u16;
+        }
+
+        if let Some(search) = state.search.as_ref() {
+            let search_area = Rect::new(area.left() + 1, area.bottom() - 1, area.width - 1, 1);
+            let search_text = format!("\u{f002} {search}");
+            let cursor_area = Rect::new(
+                search_area.left() + search_text.chars().count() as u16,
+                search_area.top(),
+                1,
+                1,
+            );
+            buf.set_style(cursor_area, Style::new().bg(Color::White));
+            Paragraph::new(search_text).render(search_area, buf);
         }
     }
 }
