@@ -5,6 +5,8 @@ use ratatui::{
     text::Text,
     widgets::{Block, StatefulWidget, Widget},
 };
+use regex::Regex;
+use std::borrow::Cow;
 
 #[derive(Debug, Clone)]
 pub struct TreeItem<'a> {
@@ -30,6 +32,7 @@ struct ComputedItem<'a> {
     item: &'a TreeItem<'a>,
     index: Vec<usize>,
     visible: bool,
+    search_candidate: bool,
 }
 
 #[derive(Debug, Clone)]
@@ -38,6 +41,7 @@ pub struct TreeState<'a> {
     position: usize,
     start: usize,
     end: usize,
+    search: Option<Regex>,
 }
 
 impl<'a> TreeState<'a> {
@@ -47,6 +51,7 @@ impl<'a> TreeState<'a> {
             position: Default::default(),
             start: Default::default(),
             end: Default::default(),
+            search: Default::default(),
         }
     }
 
@@ -105,6 +110,15 @@ impl<'a> TreeState<'a> {
         }
     }
 
+    pub fn search(&mut self, search: Option<&String>) -> Result<(), regex::Error> {
+        self.search = if let Some(search) = search {
+            Some(Regex::new(search)?)
+        } else {
+            None
+        };
+        Ok(())
+    }
+
     fn items(&'a self) -> Vec<ComputedItem<'a>> {
         let mut to_flatten = self
             .items
@@ -114,10 +128,23 @@ impl<'a> TreeState<'a> {
             .collect::<Vec<_>>();
         let mut entries = Vec::default();
         while let Some((index, visible, item)) = to_flatten.pop() {
+            let search_candidate = if let Some(search) = &self.search {
+                let text = item
+                    .contents
+                    .lines
+                    .iter()
+                    .flat_map(|line| line.spans.iter().map(|span| span.content.clone()))
+                    .collect::<Vec<Cow<str>>>()
+                    .join("");
+                search.is_match(&text)
+            } else {
+                false
+            };
             entries.push(ComputedItem {
                 item,
                 index: index.clone(),
                 visible,
+                search_candidate,
             });
             to_flatten.extend(
                 item.children
@@ -231,6 +258,11 @@ impl<'a> StatefulWidget for Tree<'a> {
                 Style::new()
                     .bg(item.item.color)
                     .add_modifier(Modifier::BOLD)
+            } else if item.search_candidate {
+                Style::new()
+                    .fg(item.item.color)
+                    .add_modifier(Modifier::BOLD)
+                    .add_modifier(Modifier::UNDERLINED)
             } else {
                 Style::new().fg(item.item.color)
             };
