@@ -266,9 +266,10 @@ impl<'a> StatefulWidget for Tree<'a> {
             } else {
                 Style::new().fg(item.item.color)
             };
-            buf.set_style(area, style);
 
             for (line_idx, line) in item.item.contents.lines.iter().enumerate() {
+                let text_area = Rect::new(area.left(), item_top, line.width() as u16, 1);
+                buf.set_style(text_area, style);
                 buf.set_line(area.left(), item_top + line_idx as u16, line, area.width);
             }
             item_bottom += item.item.contents.height() as u16;
