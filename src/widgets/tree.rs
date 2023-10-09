@@ -129,14 +129,18 @@ impl<'a> TreeState<'a> {
         let mut entries = Vec::default();
         while let Some((index, visible, item)) = to_flatten.pop() {
             let search_candidate = if let Some(search) = &self.search {
-                let text = item
-                    .contents
-                    .lines
-                    .iter()
-                    .flat_map(|line| line.spans.iter().map(|span| span.content.clone()))
-                    .collect::<Vec<Cow<str>>>()
-                    .join("");
-                search.is_match(&text)
+                if !search.as_str().is_empty() {
+                    let text = item
+                        .contents
+                        .lines
+                        .iter()
+                        .flat_map(|line| line.spans.iter().map(|span| span.content.clone()))
+                        .collect::<Vec<Cow<str>>>()
+                        .join("");
+                    search.is_match(&text)
+                } else {
+                    false
+                }
             } else {
                 false
             };
