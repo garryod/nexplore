@@ -96,24 +96,19 @@ fn run(
                     }
                     (Mode::Normal, KeyCode::Char('/')) => {
                         mode = Mode::Search;
-                        contents_tree.state.search(Some(&search)).ok();
+                        contents_tree.state.search(Some(search.clone()));
                     }
                     (Mode::Search, KeyCode::Esc) => {
                         mode = Mode::default();
-                        contents_tree.state.search(None).ok();
+                        contents_tree.state.search(None);
                     }
                     (Mode::Search, KeyCode::Char(char)) => {
                         search.push(char);
-                        if contents_tree.state.search(Some(&search)).is_err() {
-                            search.pop();
-                        }
+                        contents_tree.state.search(Some(search.clone()));
                     }
                     (Mode::Search, KeyCode::Backspace) => {
-                        if let Some(removed) = search.pop() {
-                            if contents_tree.state.search(Some(&search)).is_err() {
-                                search.push(removed)
-                            }
-                        }
+                        search.pop();
+                        contents_tree.state.search(Some(search.clone()));
                     }
                     _ => {}
                 }

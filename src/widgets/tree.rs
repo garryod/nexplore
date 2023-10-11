@@ -41,7 +41,7 @@ pub struct TreeState<'a> {
     position: usize,
     start: usize,
     end: usize,
-    search: Option<Regex>,
+    search: Option<String>,
 }
 
 impl<'a> TreeState<'a> {
@@ -110,37 +110,30 @@ impl<'a> TreeState<'a> {
         }
     }
 
-    pub fn search(&mut self, search: Option<&String>) -> Result<(), regex::Error> {
-        self.search = if let Some(search) = search {
-            Some(Regex::new(search)?)
-        } else {
-            None
-        };
-        Ok(())
+    pub fn search(&mut self, search: Option<String>) {
+        self.search = search;
     }
 
     fn items(&'a self) -> Vec<ComputedItem<'a>> {
+        let search_regex = self.search.clone().map(|search| Regex::new(&search));
         let mut to_flatten = self
             .items
             .iter()
             .enumerate()
-            .map(|(index, item)| (vec![index], true, item))
+            .map(|(index, item)| (vec![index], true, "/".to_string(), item))
             .collect::<Vec<_>>();
         let mut entries = Vec::default();
-        while let Some((index, visible, item)) = to_flatten.pop() {
-            let search_candidate = if let Some(search) = &self.search {
-                if !search.as_str().is_empty() {
-                    let text = item
-                        .contents
-                        .lines
-                        .iter()
-                        .flat_map(|line| line.spans.iter().map(|span| span.content.clone()))
-                        .collect::<Vec<Cow<str>>>()
-                        .join("");
-                    search.is_match(&text)
-                } else {
-                    false
-                }
+        while let Some((index, visible, prefix, item)) = to_flatten.pop() {
+            let name = item
+                .contents
+                .lines
+                .iter()
+                .flat_map(|line| line.spans.iter().map(|span| span.content.clone()))
+                .collect::<Vec<Cow<str>>>()
+                .join("");
+            let text = format!("{prefix}/{name}");
+            let search_candidate = if let Some(Ok(search_regex)) = search_regex.clone() {
+                search_regex.is_match(&text)
             } else {
                 false
             };
@@ -162,6 +155,7 @@ impl<'a> TreeState<'a> {
                                 .chain(std::iter::once(child_index))
                                 .collect(),
                             visible && item.expanded,
+                            text.clone(),
                             child,
                         )
                     })
