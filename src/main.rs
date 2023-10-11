@@ -46,11 +46,13 @@ fn restore_terminal(
     Ok(terminal.show_cursor()?)
 }
 
-#[derive(Debug, Clone, Copy, Default)]
+#[derive(Debug, Clone, Default)]
 enum Mode {
     #[default]
     Normal,
-    Search,
+    Search {
+        search: String,
+    },
 }
 
 fn run(
@@ -62,7 +64,6 @@ fn run(
     let file_name = FileName::new(file_info.name.clone());
     let file_size = FileSize::new(file_info.size);
     let mut contents_tree = ContentsTree::new(file_info.to_tree_items());
-    let mut search = String::default();
     loop {
         let entity_info = file_info
             .entity(contents_tree.state.position().unwrap())
@@ -78,35 +79,37 @@ fn run(
         })?;
         if event::poll(Duration::from_millis(250))? {
             if let Event::Key(key) = event::read()? {
-                match (mode, key.code) {
-                    (Mode::Normal, KeyCode::Esc | KeyCode::Char('q')) => break,
-                    (Mode::Normal, KeyCode::Up | KeyCode::Char('k')) => {
+                match (&mut mode, key.code) {
+                    (&mut Mode::Normal, KeyCode::Esc | KeyCode::Char('q')) => break,
+                    (&mut Mode::Normal, KeyCode::Up | KeyCode::Char('k')) => {
                         contents_tree.state.move_up()
                     }
-                    (Mode::Normal, KeyCode::Down | KeyCode::Char('j')) => {
+                    (&mut Mode::Normal, KeyCode::Down | KeyCode::Char('j')) => {
                         contents_tree.state.move_down()
                     }
-                    (Mode::Normal, KeyCode::PageUp) => contents_tree.state.page_up(),
-                    (Mode::Normal, KeyCode::PageDown) => contents_tree.state.page_down(),
-                    (Mode::Normal, KeyCode::Left | KeyCode::Char('h')) => {
+                    (&mut Mode::Normal, KeyCode::PageUp) => contents_tree.state.page_up(),
+                    (&mut Mode::Normal, KeyCode::PageDown) => contents_tree.state.page_down(),
+                    (&mut Mode::Normal, KeyCode::Left | KeyCode::Char('h')) => {
                         contents_tree.state.collapse()
                     }
-                    (Mode::Normal, KeyCode::Right | KeyCode::Char('l')) => {
+                    (&mut Mode::Normal, KeyCode::Right | KeyCode::Char('l')) => {
                         contents_tree.state.expand()
                     }
-                    (Mode::Normal, KeyCode::Char('/')) => {
-                        mode = Mode::Search;
-                        contents_tree.state.search(Some(search.clone()));
+                    (mode, KeyCode::Char('/')) if matches!(mode, Mode::Normal) => {
+                        *mode = Mode::Search {
+                            search: String::default(),
+                        };
+                        contents_tree.state.search(Some(String::default()));
                     }
-                    (Mode::Search, KeyCode::Esc) => {
+                    (&mut Mode::Search { search: _ }, KeyCode::Esc) => {
                         mode = Mode::default();
                         contents_tree.state.search(None);
                     }
-                    (Mode::Search, KeyCode::Char(char)) => {
+                    (&mut Mode::Search { ref mut search }, KeyCode::Char(char)) => {
                         search.push(char);
                         contents_tree.state.search(Some(search.clone()));
                     }
-                    (Mode::Search, KeyCode::Backspace) => {
+                    (&mut Mode::Search { ref mut search }, KeyCode::Backspace) => {
                         search.pop();
                         contents_tree.state.search(Some(search.clone()));
                     }
