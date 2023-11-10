@@ -2,7 +2,7 @@
 
 A Terminal User Interface (TUI) for exploring hdf5 & NeXus files.
 
-## Usage:
+## Usage
 
 ```bash
 nexplore path/to/file.h5
