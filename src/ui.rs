@@ -4,7 +4,6 @@ use crate::{
 };
 use humansize::{format_size, ToF64, Unsigned, BINARY};
 use ratatui::{
-    backend::CrosstermBackend,
     buffer::Buffer,
     layout::{Constraint, Direction, Layout, Rect},
     style::{Color, Style},
@@ -12,7 +11,6 @@ use ratatui::{
     widgets::{Block, Borders, Cell, Paragraph, Row, Table, Widget},
     Frame,
 };
-use std::io::Stdout;
 
 #[derive(Debug)]
 pub struct Screen {
@@ -40,7 +38,7 @@ impl Default for Screen {
 impl Screen {
     pub fn render(
         &self,
-        frame: &mut Frame<'_, CrosstermBackend<Stdout>>,
+        frame: &mut Frame,
         file_name: &FileName,
         file_size: &FileSize,
         contents_tree: &mut ContentsTree,
@@ -112,14 +110,16 @@ const GROUP_COLOR: Color = Color::Blue;
 
 impl Widget for GroupInfo {
     fn render(self, area: Rect, buf: &mut Buffer) {
-        Table::new(vec![
-            Row::new(vec![Cell::from("ID"), Cell::from(self.id.to_string())]),
-            Row::new(vec![
-                Cell::from("Link Type"),
-                Cell::from(self.link_kind.to_string()),
-            ]),
-        ])
-        .widths(&[Constraint::Ratio(1, 2), Constraint::Ratio(1, 2)])
+        Table::new(
+            [
+                Row::new(vec![Cell::from("ID"), Cell::from(self.id.to_string())]),
+                Row::new(vec![
+                    Cell::from("Link Type"),
+                    Cell::from(self.link_kind.to_string()),
+                ]),
+            ],
+            [Constraint::Ratio(1, 2), Constraint::Ratio(1, 2)],
+        )
         .block(
             Block::default()
                 .title(self.name.clone())
@@ -189,8 +189,7 @@ impl Widget for DatasetInfo {
             DatasetLayoutInfo::Virtial {} => {}
         }
 
-        Table::new(rows)
-            .widths(&[Constraint::Ratio(1, 2), Constraint::Ratio(1, 2)])
+        Table::new(rows, [Constraint::Ratio(1, 2), Constraint::Ratio(1, 2)])
             .block(
                 Block::default()
                     .title(self.name.clone())
