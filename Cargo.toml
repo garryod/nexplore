@@ -11,7 +11,7 @@ repository = "https://github.com/garryod/nexplore"
 
 [dependencies]
 anyhow = { version = "1.0.78" }
-clap = { version = "4.4.12", features = ["derive"] }
+clap = { version = "4.5.0", features = ["derive"] }
 crossterm = { version = "0.27.0" }
 hdf5 = { git = "https://github.com/aldanor/hdf5-rust.git", rev = "26046fb4900ec38afd2a1c0494cff688b288662e", features = [
   "static",
