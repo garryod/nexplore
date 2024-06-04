@@ -1,7 +1,7 @@
 use crate::widgets::tree::TreeItem;
 use anyhow::{anyhow, Context};
 use hdf5::{dataset::Layout, filters::Filter, Dataset, File, Group, LinkInfo, LinkType};
-use std::path::Path;
+use std::{fmt::Display, path::Path};
 
 #[derive(Debug, Clone)]
 pub enum EntityInfo {
@@ -116,13 +116,13 @@ impl From<LinkType> for LinkKind {
     }
 }
 
-impl ToString for LinkKind {
-    fn to_string(&self) -> String {
-        match self {
-            Self::Hard => "Hard".to_string(),
-            Self::Soft => "Soft".to_string(),
-            Self::External => "External".to_string(),
-        }
+impl Display for LinkKind {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.write_str(match self {
+            Self::Hard => "Hard",
+            Self::Soft => "Soft",
+            Self::External => "External",
+        })
     }
 }
 
