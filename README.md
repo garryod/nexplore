@@ -10,12 +10,14 @@ nexplore path/to/file.h5
 
 ## Key Controls
 
-| Action           | Key Binding |
-| ---------------- | ----------- |
-| Quit             | Esc \| Q    |
-| Move Up          | Up \| K     |
-| Move Down        | Down \| J   |
-| Move Up (Page)   | Page Up     |
-| Move Down (Page) | Page Down   |
-| Collapse Group   | Left \| H   |
-| Expand Group     | Right \| L  |
+| Action           | Key Binding         |
+| ---------------- | ------------------- |
+| Quit             | Esc \| Q            |
+| Move Up          | Up \| K             |
+| Move Down        | Down \| J           |
+| Move Up (Page)   | Page Up             |
+| Move Down (Page) | Page Down           |
+| Collapse Group   | Left \| H           |
+| Expand Group     | Right \| L          |
+| Collapse All     | Shift + Left \| H   |
+| Expand All       | Shift + Right \| L  |

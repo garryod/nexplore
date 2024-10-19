@@ -104,10 +104,27 @@ impl<'a> TreeState<'a> {
         }
     }
 
+    pub fn expand_all(&mut self) {
+        let mut to_collapse = self.items.iter_mut().collect::<Vec<_>>();
+        while let Some(item) = to_collapse.pop() {
+            to_collapse.extend(item.children.iter_mut());
+            item.expanded = true;
+        }
+    }
+
     pub fn collapse(&mut self) {
         if let Some(selected) = self.selected_mut() {
             selected.expanded = false;
         }
+    }
+
+    pub fn collapse_all(&mut self) {
+        let mut to_collapse = self.items.iter_mut().collect::<Vec<_>>();
+        while let Some(item) = to_collapse.pop() {
+            to_collapse.extend(item.children.iter_mut());
+            item.expanded = false;
+        }
+        self.position = 0
     }
 
     pub fn search(&mut self, search: Option<String>) {

@@ -6,7 +6,7 @@ use crate::ui::Screen;
 use anyhow::Context;
 use clap::Parser;
 use crossterm::{
-    event::{self, Event, KeyCode},
+    event::{self, Event, KeyCode, KeyModifiers},
     execute,
     terminal::{disable_raw_mode, enable_raw_mode, EnterAlternateScreen, LeaveAlternateScreen},
 };
@@ -79,37 +79,65 @@ fn run(
         })?;
         if event::poll(Duration::from_millis(250))? {
             if let Event::Key(key) = event::read()? {
-                match (&mut mode, key.code) {
-                    (&mut Mode::Normal, KeyCode::Esc | KeyCode::Char('q')) => break,
-                    (&mut Mode::Normal, KeyCode::Up | KeyCode::Char('k')) => {
+                match (&mut mode, key.code, key.modifiers) {
+                    (&mut Mode::Normal, KeyCode::Esc | KeyCode::Char('q'), KeyModifiers::NONE) => {
+                        break
+                    }
+                    (&mut Mode::Normal, KeyCode::Up | KeyCode::Char('k'), KeyModifiers::NONE) => {
                         contents_tree.state.move_up()
                     }
-                    (&mut Mode::Normal, KeyCode::Down | KeyCode::Char('j')) => {
+                    (&mut Mode::Normal, KeyCode::Down | KeyCode::Char('j'), KeyModifiers::NONE) => {
                         contents_tree.state.move_down()
                     }
-                    (&mut Mode::Normal, KeyCode::PageUp) => contents_tree.state.page_up(),
-                    (&mut Mode::Normal, KeyCode::PageDown) => contents_tree.state.page_down(),
-                    (&mut Mode::Normal, KeyCode::Left | KeyCode::Char('h')) => {
+                    (&mut Mode::Normal, KeyCode::PageUp, KeyModifiers::NONE) => {
+                        contents_tree.state.page_up()
+                    }
+                    (&mut Mode::Normal, KeyCode::PageDown, KeyModifiers::NONE) => {
+                        contents_tree.state.page_down()
+                    }
+                    (&mut Mode::Normal, KeyCode::Left | KeyCode::Char('h'), KeyModifiers::NONE) => {
                         contents_tree.state.collapse()
                     }
-                    (&mut Mode::Normal, KeyCode::Right | KeyCode::Char('l')) => {
-                        contents_tree.state.expand()
-                    }
-                    (mode, KeyCode::Char('/')) if matches!(mode, Mode::Normal) => {
+                    (
+                        &mut Mode::Normal,
+                        KeyCode::Right | KeyCode::Char('l'),
+                        KeyModifiers::NONE,
+                    ) => contents_tree.state.expand(),
+                    (
+                        &mut Mode::Normal,
+                        KeyCode::Left | KeyCode::Char('H'),
+                        KeyModifiers::SHIFT,
+                    ) => contents_tree.state.collapse_all(),
+                    (
+                        &mut Mode::Normal,
+                        KeyCode::Right | KeyCode::Char('L'),
+                        KeyModifiers::SHIFT,
+                    ) => contents_tree.state.expand_all(),
+                    (mode, KeyCode::Char('/'), KeyModifiers::NONE)
+                        if matches!(mode, Mode::Normal) =>
+                    {
                         *mode = Mode::Search {
                             search: String::default(),
                         };
                         contents_tree.state.search(Some(String::default()));
                     }
-                    (&mut Mode::Search { search: _ }, KeyCode::Esc) => {
+                    (&mut Mode::Search { search: _ }, KeyCode::Esc, KeyModifiers::NONE) => {
                         mode = Mode::default();
                         contents_tree.state.search(None);
                     }
-                    (&mut Mode::Search { ref mut search }, KeyCode::Char(char)) => {
+                    (
+                        &mut Mode::Search { ref mut search },
+                        KeyCode::Char(char),
+                        KeyModifiers::NONE,
+                    ) => {
                         search.push(char);
                         contents_tree.state.search(Some(search.clone()));
                     }
-                    (&mut Mode::Search { ref mut search }, KeyCode::Backspace) => {
+                    (
+                        &mut Mode::Search { ref mut search },
+                        KeyCode::Backspace,
+                        KeyModifiers::NONE,
+                    ) => {
                         search.pop();
                         contents_tree.state.search(Some(search.clone()));
                     }
