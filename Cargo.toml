@@ -10,7 +10,7 @@ categories = ["command-line-utilities", "science", "visualization"]
 repository = "https://github.com/garryod/nexplore"
 
 [dependencies]
-anyhow = { version = "1.0.91" }
+anyhow = { version = "1.0.93" }
 clap = { version = "4.5.20", features = ["derive"] }
 crossterm = { version = "0.28.1" }
 hdf5 = { git = "https://github.com/aldanor/hdf5-rust.git", rev = "43015ddaa87e62b63dc1b1ae7fed49a430e1b53a", features = [
