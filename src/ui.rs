@@ -44,7 +44,7 @@ impl Screen {
         contents_tree: &mut ContentsTree,
         entity_info: impl Widget,
     ) {
-        let vertical_chunks = self.frame_layout.split(frame.size());
+        let vertical_chunks = self.frame_layout.split(frame.area());
         let header_chunks = self.header_layout.split(vertical_chunks[0]);
         frame.render_widget(file_name.0.clone(), header_chunks[0]);
         frame.render_widget(file_size.0.clone(), header_chunks[1]);
