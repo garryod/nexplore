@@ -61,7 +61,7 @@ impl Screen {
 #[derive(Debug, Clone)]
 pub struct FileName<'a>(Paragraph<'a>);
 
-impl<'a> FileName<'a> {
+impl FileName<'_> {
     pub fn new(file_name: impl AsRef<str>) -> Self {
         Self(
             Paragraph::new(file_name.as_ref().to_string())
@@ -73,7 +73,7 @@ impl<'a> FileName<'a> {
 #[derive(Debug, Clone)]
 pub struct FileSize<'a>(Paragraph<'a>);
 
-impl<'a> FileSize<'a> {
+impl FileSize<'_> {
     pub fn new(file_size: impl ToF64 + Unsigned) -> Self {
         Self(
             Paragraph::new(format_size(file_size, BINARY))
