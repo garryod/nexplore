@@ -28,7 +28,7 @@ pub struct GroupInfo {
 
 impl GroupInfo {
     fn try_from_group_and_link(group: Group, link: LinkInfo) -> Result<Self, anyhow::Error> {
-        let name = group.name().split('/').last().unwrap().to_string();
+        let name = group.name().split('/').next_back().unwrap().to_string();
         let id = group.id();
         let entities = group
             .iter_visit_default(Vec::new(), |group, key, link, entities| {
@@ -77,7 +77,7 @@ pub enum DatasetLayoutInfo {
 
 impl DatasetInfo {
     fn from_dataset_and_link(dataset: Dataset, link: LinkInfo) -> Self {
-        let name = dataset.name().split('/').last().unwrap().to_string();
+        let name = dataset.name().split('/').next_back().unwrap().to_string();
         let id = dataset.id();
         let shape = dataset.shape();
         let layout_info = match dataset.layout() {
