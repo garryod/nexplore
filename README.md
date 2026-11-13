@@ -21,3 +21,5 @@ nexplore path/to/file.h5
 | Expand Group     | Right \| L          |
 | Collapse All     | Shift + Left \| H   |
 | Expand All       | Shift + Right \| L  |
+| Toggle Plot      | P                   |
+| Help             | ?                   |
